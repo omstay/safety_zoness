@@ -5,6 +5,9 @@ import 'package:safetyzoness/screens/buisssnes_management_screen.dart';
 import 'package:safetyzoness/screens/otp_login.dart';
 import 'package:safetyzoness/screens/dashbord.dart';
 import 'package:safetyzoness/screens/inventory_management.dart';
+import 'package:safetyzoness/screens/part_management_screen.dart';
+import 'package:safetyzoness/screens/party_screen.dart';
+
 import 'package:safetyzoness/services/firebase_options.dart';
 import 'screens/subscription_screen.dart';
 
@@ -56,6 +59,8 @@ class MyApp extends StatelessWidget {
         '/dashboard': (context) => const DashboardScreen(),
         '/login': (context) => const OTPLoginScreen(),
         '/gst': (context) => const GSTManagementScreen(),
+        '/party': (context) => const PartyManagementScreen(),
+        '/add_party': (context) => const AddPartyScreen(), // New route
       },
     );
   }
@@ -395,6 +400,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   final List<Widget> _screens = [
     const InventoryManagementScreen(),
     const DashboardScreen(),
+    const PartyManagementScreen(), // Add Party Management Screen
     const GSTManagementScreen(),
     const SubscriptionScreen(),
   ];
@@ -413,6 +419,13 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
       label: 'Dashboard',
       color: const Color(0xFF2196F3),
       gradient: const [Color(0xFF2196F3), Color(0xFF64B5F6)],
+    ),
+    NavigationItem(
+      icon: Icons.people_outline,
+      activeIcon: Icons.people,
+      label: 'Parties',
+      color: const Color(0xFFFF5722),
+      gradient: const [Color(0xFFFF5722), Color(0xFFFF8A65)],
     ),
     NavigationItem(
       icon: Icons.receipt_long_outlined,

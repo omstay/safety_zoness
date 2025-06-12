@@ -11,32 +11,44 @@ dependencies:
   flutter:
     sdk: flutter
 
-  # Firebase (All compatible with firebase_core ^2.24.2)
-  firebase_core: ^2.24.2
-  firebase_auth: ^4.16.0
-  cloud_firestore: ^4.13.6
-  firebase_storage: ^11.5.6
+  # Firebase - Updated to latest compatible versions
+  firebase_core: ^3.14.0
+  firebase_auth: ^5.6.0
+  cloud_firestore: ^5.6.9
+  firebase_storage: ^12.4.7
 
-  # HTTP and API
-  http: ^1.1.0
-  dio: ^5.3.2
-  js: ^0.7.2
+  # Core utilities
+  intl: ^0.20.2
+
+  # Document handling - Updated versions
+  path_provider: ^2.1.4
+  pdf: ^3.11.1
+  share_plus: ^11.0.0
+  printing: ^5.14.2
+
+  permission_handler: ^12.0.0+1
+
+  # HTTP and API - Updated
+  http: ^1.2.2
+  dio: ^5.7.0
+  # Remove js package as it's discontinued
+
   # State Management
-  provider: ^6.1.1
+  provider: ^6.1.2
 
-  # Utilities
-  shared_preferences: ^2.2.2
-  connectivity_plus: 6.1.4
-  image_picker: ^1.0.4
-  uuid: ^4.2.1
+  # Utilities - Updated versions
+  shared_preferences: ^2.3.4
+  connectivity_plus: ^6.1.4
+  image_picker: ^1.1.2
+  uuid: ^4.5.1
 
   cupertino_icons: ^1.0.8
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^5.0.0
-  flutter_launcher_icons: ^0.13.1
+  flutter_lints: ^6.0.0  # Updated
+  flutter_launcher_icons: ^0.14.4  # Updated
 
 flutter_icons:
   android: true
