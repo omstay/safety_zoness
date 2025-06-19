@@ -372,7 +372,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   Text(
-                    'Inventory Management',
+                    'Sales',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 14,

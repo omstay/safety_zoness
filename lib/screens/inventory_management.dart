@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
+import '../model/SaleMaster.dart';
+import 'add_edit_sale_screen.dart';
 
 // Data Models with improved dynamic data handling
 class ItemMaster {
@@ -435,7 +438,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
     // Use provided businessId or get from config
     _currentBusinessId = widget.businessId ?? BusinessConfig.getCurrentBusinessId();
   }
@@ -446,7 +449,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
-          'Inventory Management',
+          'Sales',
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -459,8 +462,9 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
           labelColor: const Color(0xFF667eea),
           unselectedLabelColor: Colors.grey,
           indicatorColor: const Color(0xFF667eea),
-          indicatorWeight: 3,
+          indicatorWeight: 4,
           tabs: const [
+            Tab(text: 'Sales', icon: Icon(Icons.monetization_on_rounded)),
             Tab(text: 'Items', icon: Icon(Icons.inventory_2)),
             Tab(text: 'Stock', icon: Icon(Icons.storage)),
             Tab(text: 'Reports', icon: Icon(Icons.analytics)),
@@ -470,6 +474,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
+          SalesTab(businessId: _currentBusinessId,),
           ItemsTab(businessId: _currentBusinessId),
           StockTab(businessId: _currentBusinessId),
           ReportsTab(businessId: _currentBusinessId),
@@ -478,7 +483,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       floatingActionButton: AnimatedBuilder(
         animation: _tabController,
         builder: (context, child) {
-          if (_tabController.index == 0) {
+          if (_tabController.index == 1) {
             return FloatingActionButton.extended(
               onPressed: () => _showAddItemDialog(),
               backgroundColor: const Color(0xFF667eea),
@@ -486,7 +491,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
               icon: const Icon(Icons.add),
               label: const Text('Add Item'),
             );
-          } else if (_tabController.index == 1) {
+          } else if (_tabController.index == 2) {
             return FloatingActionButton.extended(
               onPressed: () => _showAddStockDialog(),
               backgroundColor: const Color(0xFF4CAF50),
@@ -1135,6 +1140,221 @@ class _ItemsTabState extends State<ItemsTab> {
     super.dispose();
   }
 }
+
+class SalesTab extends StatefulWidget {
+  final String businessId;
+
+  const SalesTab({super.key, required this.businessId});
+
+  @override
+  State<SalesTab> createState() => _SalesTabState();
+}
+
+class _SalesTabState extends State<SalesTab> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        // Search bar
+        Container(
+          margin: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextField(
+            controller: _searchController,
+            decoration: const InputDecoration(
+              hintText: 'Search sales by customer...',
+              prefixIcon: Icon(Icons.search),
+              border: InputBorder.none,
+              contentPadding: EdgeInsets.all(16),
+            ),
+            onChanged: (value) {
+              setState(() {
+                _searchQuery = value.toLowerCase();
+              });
+            },
+          ),
+        ),
+
+        // Sales List
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('sales')
+                .where('businessId', isEqualTo: widget.businessId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return const Center(child: Text("Error loading sales"));
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+
+              final sales = snapshot.data!.docs
+                  .map((doc) {
+                try {
+                  return SaleMaster.fromFirestore(doc);
+                } catch (e) {
+                  print('Error parsing sale: $e');
+                  return null;
+                }
+              })
+                  .where((sale) => sale != null)
+                  .cast<SaleMaster>()
+                  .where((sale) => _searchQuery.isEmpty ||
+                  sale.customerName.toLowerCase().contains(_searchQuery))
+                  .toList();
+
+              if (sales.isEmpty) {
+                return _buildEmptyState();
+              }
+
+              return ListView.builder(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: sales.length,
+                itemBuilder: (context, index) {
+                  return _buildSaleCard(sales[index]);
+                },
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.receipt_long_outlined, size: 80, color: Colors.grey),
+          const SizedBox(height: 16),
+          Text(
+            _searchQuery.isEmpty ? 'No sales yet' : 'No matching sales',
+            style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
+          ),
+          if (_searchQuery.isEmpty) ...[
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: _showAddSaleDialog,
+              icon: const Icon(Icons.add),
+              label: const Text('Add Sale'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF667eea),
+                foregroundColor: Colors.white,
+              ),
+            ),
+          ]
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSaleCard(SaleMaster sale) {
+    return Card(
+      margin: const EdgeInsets.only(bottom: 12),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      elevation: 2,
+      child: InkWell(
+        onTap: () => _showEditSaleDialog(sale),
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                sale.customerName,
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 4),
+              Text('Invoice #: ${sale.invoiceNumber}'),
+              Text('Date: ${DateFormat('dd MMM yyyy').format(sale.saleDate)}'),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Total: ₹${sale.totalAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green,
+                    ),
+                  ),
+                  PopupMenuButton<String>(
+                    onSelected: (value) {
+                      if (value == 'edit') {
+                        _showEditSaleDialog(sale);
+                      } else if (value == 'delete') {
+                        _deleteSale(sale.id);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                    ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showAddSaleDialog() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AddEditSaleScreen(businessId: widget.businessId,saleId: '',)),
+    );
+  }
+
+  void _showEditSaleDialog(SaleMaster sale) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditSaleScreen(businessId: widget.businessId, saleId: '',),
+      ),
+    );
+  }
+
+  Future<void> _deleteSale(String saleId) async {
+    try {
+      await _firestore.collection('sales').doc(saleId).delete();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Sale deleted'), backgroundColor: Colors.green),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+}
+
 
 // Stock Tab with improved error handling
 class StockTab extends StatefulWidget {
