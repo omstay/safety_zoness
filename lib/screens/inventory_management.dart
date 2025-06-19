@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:safetyzoness/screens/pdf_utils.dart';
 import '../model/SaleMaster.dart';
 import 'add_edit_sale_screen.dart';
 
@@ -577,11 +578,7 @@ class _ItemsTabState extends State<ItemsTab> {
         // Items List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: _firestore
-                .collection('items')
-                .where('businessId', isEqualTo: widget.businessId)
-                .where('isActive', isEqualTo: true)
-                .snapshots(),
+            stream: _firestore.collection('sales').snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
@@ -1160,26 +1157,15 @@ class _SalesTabState extends State<SalesTab> {
     return Column(
       children: [
         // Search bar
-        Container(
-          margin: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 10,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
+        Padding(
+          padding: const EdgeInsets.all(16),
           child: TextField(
             controller: _searchController,
-            decoration: const InputDecoration(
+            decoration: InputDecoration(
               hintText: 'Search sales by customer...',
-              prefixIcon: Icon(Icons.search),
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.all(16),
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              contentPadding: const EdgeInsets.all(16),
             ),
             onChanged: (value) {
               setState(() {
@@ -1194,7 +1180,7 @@ class _SalesTabState extends State<SalesTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('sales')
-                .where('businessId', isEqualTo: widget.businessId)
+                .orderBy('date', descending: true)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
@@ -1215,8 +1201,7 @@ class _SalesTabState extends State<SalesTab> {
               })
                   .where((sale) => sale != null)
                   .cast<SaleMaster>()
-                  .where((sale) => _searchQuery.isEmpty ||
-                  sale.customerName.toLowerCase().contains(_searchQuery))
+                  .where((sale) => _searchQuery.isEmpty || sale.customerName.toLowerCase().contains(_searchQuery))
                   .toList();
 
               if (sales.isEmpty) {
@@ -1233,6 +1218,27 @@ class _SalesTabState extends State<SalesTab> {
             },
           ),
         ),
+        Row(
+          children: [
+            const Spacer(),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddEditSaleScreen(
+                      businessId: widget.businessId,
+                      saleId: '',
+                      saleDoc: null,
+                    ),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.add),
+              label: const Text("Add New Sale"),
+            ),
+          ],
+        ),
       ],
     );
   }
@@ -1248,18 +1254,16 @@ class _SalesTabState extends State<SalesTab> {
             _searchQuery.isEmpty ? 'No sales yet' : 'No matching sales',
             style: TextStyle(color: Colors.grey.shade600, fontSize: 16),
           ),
-          if (_searchQuery.isEmpty) ...[
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _showAddSaleDialog,
-              icon: const Icon(Icons.add),
-              label: const Text('Add Sale'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF667eea),
-                foregroundColor: Colors.white,
-              ),
+          const SizedBox(height: 24),
+          ElevatedButton.icon(
+            onPressed: _showAddSaleDialog,
+            icon: const Icon(Icons.add),
+            label: const Text('Add Sale'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF667eea),
+              foregroundColor: Colors.white,
             ),
-          ]
+          ),
         ],
       ),
     );
@@ -1267,53 +1271,65 @@ class _SalesTabState extends State<SalesTab> {
 
   Widget _buildSaleCard(SaleMaster sale) {
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      elevation: 2,
-      child: InkWell(
-        onTap: () => _showEditSaleDialog(sale),
-        borderRadius: BorderRadius.circular(12),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                sale.customerName,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 4),
-              Text('Invoice #: ${sale.invoiceNumber}'),
-              Text('Date: ${DateFormat('dd MMM yyyy').format(sale.saleDate)}'),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Total: ₹${sale.totalAmount.toStringAsFixed(2)}',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green,
-                    ),
-                  ),
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'edit') {
-                        _showEditSaleDialog(sale);
-                      } else if (value == 'delete') {
-                        _deleteSale(sale.id);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(value: 'edit', child: Text('Edit')),
-                      const PopupMenuItem(value: 'delete', child: Text('Delete')),
-                    ],
-                  ),
-                ],
-              ),
-            ],
-          ),
+      elevation: 4,
+      margin: const EdgeInsets.only(bottom: 16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  sale.customerName,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  '₹${sale.total.toStringAsFixed(2)}',
+                  style: const TextStyle(fontSize: 16, color: Colors.green, fontWeight: FontWeight.bold),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            Text('Invoice #: ${sale.invoice}'),
+            Text('Date: ${DateFormat('dd MMM yyyy').format(sale.date)}'),
+            const SizedBox(height: 12),
+
+            // Action Buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                  onPressed: () => _generatePDF(sale),
+                  tooltip: 'Download PDF',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.share, color: Colors.blue),
+                  onPressed: () => _shareSale(sale),
+                  tooltip: 'Share',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.print, color: Colors.black),
+                  onPressed: () => _printSale(sale),
+                  tooltip: 'Print',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.edit, color: Colors.orange),
+                  onPressed: () => _showEditSaleDialog(sale),
+                  tooltip: 'Edit',
+                ),
+                IconButton(
+                  icon: const Icon(Icons.delete, color: Colors.redAccent),
+                  onPressed: () => _deleteSale(sale.id),
+                  tooltip: 'Delete',
+                ),
+              ],
+            )
+          ],
         ),
       ),
     );
@@ -1322,7 +1338,9 @@ class _SalesTabState extends State<SalesTab> {
   void _showAddSaleDialog() {
     Navigator.push(
       context,
-      MaterialPageRoute(builder: (_) => AddEditSaleScreen(businessId: widget.businessId,saleId: '',)),
+      MaterialPageRoute(
+        builder: (_) => AddEditSaleScreen(businessId: widget.businessId, saleId: ''),
+      ),
     );
   }
 
@@ -1330,7 +1348,11 @@ class _SalesTabState extends State<SalesTab> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (_) => AddEditSaleScreen(businessId: widget.businessId, saleId: '',),
+        builder: (_) => AddEditSaleScreen(
+          businessId: widget.businessId,
+          saleId: sale.id, // ← Pass saleId here
+          saleDoc: null,
+        ),
       ),
     );
   }
@@ -1348,13 +1370,24 @@ class _SalesTabState extends State<SalesTab> {
     }
   }
 
+  Future<void> _generatePDF(SaleMaster sale) async {
+    await PDFUtils.generateAndDownloadPDF(sale);
+  }
+
+  Future<void> _shareSale(SaleMaster sale) async {
+    await PDFUtils.shareSalePDF(sale);
+  }
+
+  Future<void> _printSale(SaleMaster sale) async {
+    await PDFUtils.printSalePDF(sale);
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 }
-
 
 // Stock Tab with improved error handling
 class StockTab extends StatefulWidget {
