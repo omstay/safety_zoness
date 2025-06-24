@@ -126,7 +126,7 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
     final TextEditingController invoiceController = TextEditingController();
     String? selectedPartyId;
     String selectedPartyName = '';
-    String transactionType = 'SALE';
+    String transactionType = 'CREDIT';
     DateTime selectedDate = DateTime.now();
     bool isLoading = false;
 
@@ -257,41 +257,31 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Transaction Type Selection
-                                  const Text(
-                                    'Transaction Type',
-                                    style: TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF2D3748),
-                                    ),
-                                  ),
-                                  const SizedBox(height: 12),
                                   Row(
                                     children: [
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () => setDialogState(() => transactionType = 'SALE'),
+                                          onTap: () => setDialogState(() => transactionType = 'CREDIT'),
                                           child: AnimatedContainer(
                                             duration: const Duration(milliseconds: 300),
-                                            padding: const EdgeInsets.all(16),
+                                            padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              gradient: transactionType == 'SALE'
+                                              gradient: transactionType == 'CREDIT'
                                                   ? const LinearGradient(
                                                 colors: [Color(0xFF10B981), Color(0xFF059669)],
                                               )
                                                   : null,
-                                              color: transactionType != 'SALE'
+                                              color: transactionType != 'CREDIT'
                                                   ? const Color(0xFFF7FAFC)
                                                   : null,
                                               borderRadius: BorderRadius.circular(16),
                                               border: Border.all(
-                                                color: transactionType == 'SALE'
+                                                color: transactionType == 'CREDIT'
                                                     ? Colors.transparent
                                                     : const Color(0xFFE2E8F0),
                                                 width: 2,
                                               ),
-                                              boxShadow: transactionType == 'SALE' ? [
+                                              boxShadow: transactionType == 'CREDIT' ? [
                                                 BoxShadow(
                                                   color: const Color(0xFF10B981).withOpacity(0.4),
                                                   blurRadius: 15,
@@ -302,31 +292,14 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(
-                                                  Icons.trending_up_rounded,
-                                                  color: transactionType == 'SALE'
-                                                      ? Colors.white
-                                                      : const Color(0xFF718096),
-                                                  size: 24,
-                                                ),
-                                                const SizedBox(height: 6),
                                                 Text(
-                                                  'SALE',
+                                                  'CREDIT',
                                                   style: TextStyle(
-                                                    color: transactionType == 'SALE'
+                                                    color: transactionType == 'CREDIT'
                                                         ? Colors.white
                                                         : const Color(0xFF718096),
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'Money In',
-                                                  style: TextStyle(
-                                                    color: transactionType == 'SALE'
-                                                        ? Colors.white70
-                                                        : const Color(0xFF9CA3AF),
-                                                    fontSize: 10,
                                                   ),
                                                 ),
                                               ],
@@ -337,27 +310,27 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
                                       const SizedBox(width: 12),
                                       Expanded(
                                         child: GestureDetector(
-                                          onTap: () => setDialogState(() => transactionType = 'PURCHASE'),
+                                          onTap: () => setDialogState(() => transactionType = 'CASH'),
                                           child: AnimatedContainer(
                                             duration: const Duration(milliseconds: 300),
-                                            padding: const EdgeInsets.all(16),
+                                            padding: const EdgeInsets.all(8),
                                             decoration: BoxDecoration(
-                                              gradient: transactionType == 'PURCHASE'
+                                              gradient: transactionType == 'CASH'
                                                   ? const LinearGradient(
                                                 colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
                                               )
                                                   : null,
-                                              color: transactionType != 'PURCHASE'
+                                              color: transactionType != 'CASH'
                                                   ? const Color(0xFFF7FAFC)
                                                   : null,
                                               borderRadius: BorderRadius.circular(16),
                                               border: Border.all(
-                                                color: transactionType == 'PURCHASE'
+                                                color: transactionType == 'CASH'
                                                     ? Colors.transparent
                                                     : const Color(0xFFE2E8F0),
                                                 width: 2,
                                               ),
-                                              boxShadow: transactionType == 'PURCHASE' ? [
+                                              boxShadow: transactionType == 'CASH' ? [
                                                 BoxShadow(
                                                   color: const Color(0xFFF59E0B).withOpacity(0.4),
                                                   blurRadius: 15,
@@ -368,31 +341,14 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
                                             child: Column(
                                               mainAxisSize: MainAxisSize.min,
                                               children: [
-                                                Icon(
-                                                  Icons.trending_down_rounded,
-                                                  color: transactionType == 'PURCHASE'
-                                                      ? Colors.white
-                                                      : const Color(0xFF718096),
-                                                  size: 24,
-                                                ),
-                                                const SizedBox(height: 6),
                                                 Text(
-                                                  'PURCHASE',
+                                                  'CASH',
                                                   style: TextStyle(
-                                                    color: transactionType == 'PURCHASE'
+                                                    color: transactionType == 'CASH'
                                                         ? Colors.white
                                                         : const Color(0xFF718096),
                                                     fontWeight: FontWeight.bold,
                                                     fontSize: 14,
-                                                  ),
-                                                ),
-                                                Text(
-                                                  'Money Out',
-                                                  style: TextStyle(
-                                                    color: transactionType == 'PURCHASE'
-                                                        ? Colors.white70
-                                                        : const Color(0xFF9CA3AF),
-                                                    fontSize: 10,
                                                   ),
                                                 ),
                                               ],
@@ -661,7 +617,7 @@ class _PartyManagementScreenState extends State<PartyManagementScreen>
                                                 final user = _auth.currentUser;
                                                 String userId = user?.uid ?? 'anonymous_user_${DateTime.now().millisecondsSinceEpoch}';
                                                 final amount = double.parse(amountController.text);
-                                                double balance = transactionType == 'PURCHASE' ? -amount : amount;
+                                                double balance = transactionType == 'CASH' ? -amount : amount;
 
                                                 await _firestore.collection('transactions').add({
                                                   'partyId': selectedPartyId,
@@ -1199,127 +1155,14 @@ ${data['description'].isNotEmpty ? 'Description: ${data['description']}' : ''}
         headerSliverBuilder: (context, innerBoxIsScrolled) {
           return [
             SliverAppBar(
-              expandedHeight: _isSearching ? 200 : 160,
+              expandedHeight: 380,
               floating: false,
-              pinned: true,
               backgroundColor: Colors.white,
               elevation: 0,
               automaticallyImplyLeading: false,
               flexibleSpace: FlexibleSpaceBar(
                 background: Column(
                   children: [
-                    // App Bar Content
-                    SafeArea(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Row(
-                          children: [
-                            AnimatedBuilder(
-                              animation: _fadeAnimation,
-                              builder: (context, child) {
-                                return Opacity(
-                                  opacity: _fadeAnimation.value,
-                                  child: ShaderMask(
-                                    shaderCallback: (bounds) => const LinearGradient(
-                                      colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                                    ).createShader(bounds),
-                                    child: const Text(
-                                      'Business Manager',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 24,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                            const Spacer(),
-                            IconButton(
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Icon(
-                                  _isSearching ? Icons.close : Icons.search,
-                                  color: const Color(0xFF4A5568),
-                                  size: 20,
-                                ),
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isSearching = !_isSearching;
-                                  if (!_isSearching) {
-                                    _searchController.clear();
-                                    _searchQuery = '';
-                                  }
-                                });
-                              },
-                            ),
-                            IconButton(
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.filter_list, color: Color(0xFF4A5568), size: 20),
-                              ),
-                              onPressed: _showFilterOptions,
-                            ),
-                            IconButton(
-                              icon: Container(
-                                padding: const EdgeInsets.all(8),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFFF1F5F9),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: const Icon(Icons.settings_outlined, color: Color(0xFF4A5568), size: 20),
-                              ),
-                              onPressed: () {
-                                _showSnackBar('Settings will be available soon', Colors.blue, Icons.info);
-                              },
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    // Search Bar
-                    if (_isSearching)
-                      Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 10,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: TextField(
-                          controller: _searchController,
-                          decoration: const InputDecoration(
-                            hintText: 'Search parties or transactions...',
-                            prefixIcon: Icon(Icons.search, color: Color(0xFF667EEA)),
-                            border: InputBorder.none,
-                            contentPadding: EdgeInsets.all(16),
-                          ),
-                          onChanged: (value) {
-                            setState(() {
-                              _searchQuery = value;
-                            });
-                          },
-                        ),
-                      ),
-
-                    // Tab Bar
                     Container(
                       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                       decoration: BoxDecoration(
@@ -1369,6 +1212,89 @@ ${data['description'].isNotEmpty ? 'Description: ${data['description']}' : ''}
                         dividerColor: Colors.transparent,
                       ),
                     ),
+                    AnimatedBuilder(
+                      animation: _scaleAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _scaleAnimation.value,
+                          child: Container(
+                            margin: const EdgeInsets.all(16),
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                                colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
+                              ),
+                              borderRadius: BorderRadius.circular(20),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF667EEA).withOpacity(0.3),
+                                  blurRadius: 15,
+                                  offset: const Offset(0, 8),
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                const Text(
+                                  'Business Overview',
+                                  style: TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        'To Receive',
+                                        '₹${_totalReceivable.toStringAsFixed(0)}',
+                                        Icons.trending_up_rounded,
+                                        const Color(0xFF10B981),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        'To Pay',
+                                        '₹${_totalPayable.toStringAsFixed(0)}',
+                                        Icons.trending_down_rounded,
+                                        const Color(0xFFF59E0B),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        'Total Parties',
+                                        _totalParties.toString(),
+                                        Icons.people_rounded,
+                                        const Color(0xFF8B5CF6),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: _buildStatCard(
+                                        'Transactions',
+                                        _totalTransactions.toString(),
+                                        Icons.receipt_long_rounded,
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),
@@ -1377,92 +1303,6 @@ ${data['description'].isNotEmpty ? 'Description: ${data['description']}' : ''}
         },
         body: Column(
           children: [
-            // Statistics Dashboard
-            AnimatedBuilder(
-              animation: _scaleAnimation,
-              builder: (context, child) {
-                return Transform.scale(
-                  scale: _scaleAnimation.value,
-                  child: Container(
-                    margin: const EdgeInsets.all(16),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [Color(0xFF667EEA), Color(0xFF764BA2)],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF667EEA).withOpacity(0.3),
-                          blurRadius: 15,
-                          offset: const Offset(0, 8),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        const Text(
-                          'Business Overview',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'To Receive',
-                                '₹${_totalReceivable.toStringAsFixed(0)}',
-                                Icons.trending_up_rounded,
-                                const Color(0xFF10B981),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                'To Pay',
-                                '₹${_totalPayable.toStringAsFixed(0)}',
-                                Icons.trending_down_rounded,
-                                const Color(0xFFF59E0B),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: _buildStatCard(
-                                'Total Parties',
-                                _totalParties.toString(),
-                                Icons.people_rounded,
-                                const Color(0xFF8B5CF6),
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: _buildStatCard(
-                                'Transactions',
-                                _totalTransactions.toString(),
-                                Icons.receipt_long_rounded,
-                                const Color(0xFF3B82F6),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
-
-            // Tab Content
             Expanded(
               child: TabBarView(
                 controller: _tabController,
@@ -1576,47 +1416,40 @@ ${data['description'].isNotEmpty ? 'Description: ${data['description']}' : ''}
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Quick Actions',
+                'Quick Links',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2D3748),
                 ),
               ),
-              const SizedBox(height: 12),
-              SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
-                child: Row(
-                  children: [
-                    _buildQuickAction(
-                      icon: Icons.add_circle_rounded,
-                      label: 'Add',
-                      gradient: const LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
-                      onTap: _addNewTransaction,
-                    ),
-                    const SizedBox(width: 12),
-                    _buildQuickAction(
-                      icon: Icons.analytics_rounded,
-                      label: 'Reports',
-                      gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
-                      onTap: () => _showSnackBar('Reports feature coming soon', Colors.blue, Icons.info),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildQuickAction(
-                      icon: Icons.file_download_rounded,
-                      label: 'Export',
-                      gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFD97706)]),
-                      onTap: () => _showSnackBar('Export feature coming soon', Colors.blue, Icons.info),
-                    ),
-                    const SizedBox(width: 12),
-                    _buildQuickAction(
-                      icon: Icons.backup_rounded,
-                      label: 'Backup',
-                      gradient: const LinearGradient(colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)]),
-                      onTap: () => _showSnackBar('Backup feature coming soon', Colors.blue, Icons.info),
-                    ),
-                  ],
-                ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  const SizedBox(width: 18),
+                  _buildQuickAction(
+                    icon: Icons.add_circle_rounded,
+                    label: 'Add Txn',
+                    gradient: const LinearGradient(colors: [Color(0xFF667EEA), Color(0xFF764BA2)]),
+                    onTap: _addNewTransaction,
+                  ),
+                  const SizedBox(width: 22),
+                  _buildQuickAction(
+                    icon: Icons.analytics_rounded,
+                    label: 'Sale Report',
+                    gradient: const LinearGradient(colors: [Color(0xFF10B981), Color(0xFF059669)]),
+                    onTap: () => _showSnackBar('Reports feature coming soon', Colors.blue, Icons.info),
+                  ),
+                  const SizedBox(width: 22),
+                  _buildQuickAction(
+                    icon: Icons.file_download_rounded,
+                    label: 'Export',
+                    gradient: const LinearGradient(colors: [Color(0xFFF59E0B), Color(0xFFD97706)]),
+                    onTap: () => _showSnackBar('Export feature coming soon', Colors.blue, Icons.info),
+                  ),
+                  const SizedBox(width: 18),
+                ],
               ),
             ],
           ),
@@ -1907,8 +1740,8 @@ ${data['description'].isNotEmpty ? 'Description: ${data['description']}' : ''}
   }
 
   Widget _buildTransactionCard(Map<String, dynamic> data, int index) {
-    final type = data['type'] ?? 'SALE';
-    final isIncome = type == 'SALE';
+    final type = data['type'] ?? 'CREDIT';
+    final isIncome = type == 'CREDIT';
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
