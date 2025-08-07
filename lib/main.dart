@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:safetyzoness/screens/buisssnes_management_screen.dart';
+import 'package:safetyzoness/screens/login_screen.dart';
 import 'package:safetyzoness/screens/otp_login.dart';
 import 'package:safetyzoness/screens/dashbord.dart';
 import 'package:safetyzoness/screens/inventory_management.dart';
@@ -57,7 +58,7 @@ class MyApp extends StatelessWidget {
         '/inventory': (context) => const InventoryManagementScreen(),
         '/subscription': (context) => const SubscriptionScreen(),
         '/dashboard': (context) => const DashboardScreen(),
-        '/login': (context) => const OTPLoginScreen(),
+        '/login': (context) => const AuthScreen(),
         '/gst': (context) => const GSTManagementScreen(),
         '/party': (context) => const PartyManagementScreen(),
         '/add_party': (context) => const AddPartyScreen(), // New route
@@ -162,7 +163,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
         } else {
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const OTPLoginScreen(),
+              pageBuilder: (context, animation, secondaryAnimation) => const AuthScreen(),
               transitionsBuilder: (context, animation, secondaryAnimation, child) {
                 return SlideTransition(
                   position: Tween<Offset>(

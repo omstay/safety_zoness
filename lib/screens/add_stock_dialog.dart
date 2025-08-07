@@ -59,6 +59,8 @@ class ItemMaster {
     );
   }
 
+  get itemName => null;
+
   Map<String, dynamic> toFirestore() {
     return {
       'businessId': businessId,
