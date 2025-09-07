@@ -2,13 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// UserModel and AuthService classes (include these in separate files)
+// Updated UserModel with bank details
 class UserModel {
   final String uid;
   final String email;
   final String username;
   final String phone;
   final String businessName;
+  final String bankName;
+  final String accountNumber;
+  final String ifscCode;
+  final String accountHolderName;
   final DateTime createdAt;
   final bool isActive;
 
@@ -18,6 +22,10 @@ class UserModel {
     required this.username,
     required this.phone,
     required this.businessName,
+    required this.bankName,
+    required this.accountNumber,
+    required this.ifscCode,
+    required this.accountHolderName,
     required this.createdAt,
     this.isActive = true,
   });
@@ -29,6 +37,10 @@ class UserModel {
       username: map['username'] ?? '',
       phone: map['phone'] ?? '',
       businessName: map['businessName'] ?? '',
+      bankName: map['bankName'] ?? '',
+      accountNumber: map['accountNumber'] ?? '',
+      ifscCode: map['ifscCode'] ?? '',
+      accountHolderName: map['accountHolderName'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
       isActive: map['isActive'] ?? true,
     );
@@ -41,12 +53,17 @@ class UserModel {
       'username': username,
       'phone': phone,
       'businessName': businessName,
+      'bankName': bankName,
+      'accountNumber': accountNumber,
+      'ifscCode': ifscCode,
+      'accountHolderName': accountHolderName,
       'createdAt': Timestamp.fromDate(createdAt),
       'isActive': isActive,
     };
   }
 }
 
+// Updated AuthService with bank details
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -72,6 +89,10 @@ class AuthService {
     required String username,
     required String phone,
     required String businessName,
+    required String bankName,
+    required String accountNumber,
+    required String ifscCode,
+    required String accountHolderName,
   }) async {
     try {
       final UserCredential result = await _auth.createUserWithEmailAndPassword(
@@ -87,6 +108,10 @@ class AuthService {
           username: username,
           phone: phone,
           businessName: businessName,
+          bankName: bankName,
+          accountNumber: accountNumber,
+          ifscCode: ifscCode,
+          accountHolderName: accountHolderName,
           createdAt: DateTime.now(),
           isActive: true,
         );
@@ -135,6 +160,12 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   final _phoneController = TextEditingController();
   final _businessNameController = TextEditingController();
 
+  // Bank details controllers
+  final _bankNameController = TextEditingController();
+  final _accountNumberController = TextEditingController();
+  final _ifscCodeController = TextEditingController();
+  final _accountHolderNameController = TextEditingController();
+
   final _loginFormKey = GlobalKey<FormState>();
   final _registerFormKey = GlobalKey<FormState>();
 
@@ -174,6 +205,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     _usernameController.dispose();
     _phoneController.dispose();
     _businessNameController.dispose();
+    _bankNameController.dispose();
+    _accountNumberController.dispose();
+    _ifscCodeController.dispose();
+    _accountHolderNameController.dispose();
     super.dispose();
   }
 
@@ -219,11 +254,15 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         username: _usernameController.text.trim(),
         phone: _phoneController.text.trim(),
         businessName: _businessNameController.text.trim(),
+        bankName: _bankNameController.text.trim(),
+        accountNumber: _accountNumberController.text.trim(),
+        ifscCode: _ifscCodeController.text.trim().toUpperCase(),
+        accountHolderName: _accountHolderNameController.text.trim(),
       );
 
       if (user != null && mounted) {
         Navigator.of(context).pushReplacementNamed('/main');
-        _showSnackBar('Account created successfully!', Colors.green);
+        _showSnackBar('Account created successfully with bank details!', Colors.green);
       }
     } on FirebaseAuthException catch (e) {
       String message = _getAuthErrorMessage(e.code);
@@ -664,7 +703,10 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             ),
             const SizedBox(height: 32),
 
-            // Form fields with enhanced spacing
+            // Personal Information Section
+            _buildSectionHeader('Personal Information', Icons.person_outline),
+            const SizedBox(height: 16),
+
             _buildTextField(
               controller: _usernameController,
               label: 'Full Name',
@@ -672,19 +714,6 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
                   return 'Please enter your full name';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 20),
-
-            _buildTextField(
-              controller: _businessNameController,
-              label: 'Business Name',
-              icon: Icons.business_outlined,
-              validator: (value) {
-                if (value == null || value.trim().isEmpty) {
-                  return 'Please enter your business name';
                 }
                 return null;
               },
@@ -723,7 +752,91 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 return null;
               },
             ),
+            const SizedBox(height: 32),
+
+            // Business Information Section
+            _buildSectionHeader('Business Information', Icons.business_outlined),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _businessNameController,
+              label: 'Business Name',
+              icon: Icons.business_outlined,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter your business name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 32),
+
+            // Bank Details Section
+            _buildSectionHeader('Bank Details', Icons.account_balance),
+            const SizedBox(height: 16),
+
+            _buildTextField(
+              controller: _accountHolderNameController,
+              label: 'Account Holder Name',
+              icon: Icons.account_circle_outlined,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter account holder name';
+                }
+                return null;
+              },
+            ),
             const SizedBox(height: 20),
+
+            _buildTextField(
+              controller: _bankNameController,
+              label: 'Bank Name',
+              icon: Icons.account_balance,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter bank name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+
+            _buildTextField(
+              controller: _accountNumberController,
+              label: 'Account Number',
+              icon: Icons.credit_card,
+              keyboardType: TextInputType.number,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter account number';
+                }
+                if (value.trim().length < 9 || value.trim().length > 18) {
+                  return 'Please enter a valid account number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+
+            _buildTextField(
+              controller: _ifscCodeController,
+              label: 'IFSC Code',
+              icon: Icons.qr_code,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter IFSC code';
+                }
+                if (!RegExp(r'^[A-Z]{4}0[A-Z0-9]{6}$').hasMatch(value.trim().toUpperCase())) {
+                  return 'Please enter a valid IFSC code';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 32),
+
+            // Security Section
+            _buildSectionHeader('Security', Icons.security),
+            const SizedBox(height: 16),
 
             _buildTextField(
               controller: _registerPasswordController,
@@ -794,7 +907,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 border: Border.all(color: Colors.grey.shade200),
               ),
               child: Text(
-                '📋 By creating an account, you agree to our Terms of Service and Privacy Policy',
+                '📋 By creating an account, you agree to our Terms of Service and Privacy Policy. Your bank details are encrypted and secure.',
                 style: TextStyle(
                   fontSize: 13,
                   color: Colors.grey[600],
@@ -805,6 +918,47 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, IconData icon) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF3B82F6).withOpacity(0.1),
+            const Color(0xFF60A5FA).withOpacity(0.05),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.2)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFF3B82F6).withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: const Color(0xFF3B82F6),
+              size: 20,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
       ),
     );
   }

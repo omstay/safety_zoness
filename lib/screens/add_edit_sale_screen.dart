@@ -25,12 +25,69 @@ class AddEditSaleScreen extends StatefulWidget {
 class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
+
+  // Existing controllers
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _invoiceController = TextEditingController();
   DateTime _selectedDate = DateTime.now();
   List<SaleItem> _saleItems = []; // List to hold items in the current sale
   double _totalSaleAmount = 0.0;
   bool _isLoading = false;
+
+  // NEW GST CONTROLLERS
+  final TextEditingController _recipientGSTINController = TextEditingController();
+  final TextEditingController _eWayBillController = TextEditingController();
+  final TextEditingController _distanceController = TextEditingController();
+
+  // NEW GST DROPDOWNS
+  String _selectedPlaceOfSupply = '';
+  String _selectedSupplyType = 'INTRA';
+  String _selectedSaleType = 'CASH';
+  String _selectedDocumentType = 'INV';
+  String _selectedTransportMode = 'Road';
+  bool _isReverseCharge = false;
+
+  // State codes for Place of Supply
+  final List<Map<String, String>> _stateCodes = [
+    {'code': '01', 'name': 'Jammu and Kashmir'},
+    {'code': '02', 'name': 'Himachal Pradesh'},
+    {'code': '03', 'name': 'Punjab'},
+    {'code': '04', 'name': 'Chandigarh'},
+    {'code': '05', 'name': 'Uttarakhand'},
+    {'code': '06', 'name': 'Haryana'},
+    {'code': '07', 'name': 'Delhi'},
+    {'code': '08', 'name': 'Rajasthan'},
+    {'code': '09', 'name': 'Uttar Pradesh'},
+    {'code': '10', 'name': 'Bihar'},
+    {'code': '11', 'name': 'Sikkim'},
+    {'code': '12', 'name': 'Arunachal Pradesh'},
+    {'code': '13', 'name': 'Nagaland'},
+    {'code': '14', 'name': 'Manipur'},
+    {'code': '15', 'name': 'Mizoram'},
+    {'code': '16', 'name': 'Tripura'},
+    {'code': '17', 'name': 'Meghalaya'},
+    {'code': '18', 'name': 'Assam'},
+    {'code': '19', 'name': 'West Bengal'},
+    {'code': '20', 'name': 'Jharkhand'},
+    {'code': '21', 'name': 'Odisha'},
+    {'code': '22', 'name': 'Chhattisgarh'},
+    {'code': '23', 'name': 'Madhya Pradesh'},
+    {'code': '24', 'name': 'Gujarat'},
+    {'code': '25', 'name': 'Daman and Diu'},
+    {'code': '26', 'name': 'Dadra and Nagar Haveli'},
+    {'code': '27', 'name': 'Maharashtra'},
+    {'code': '28', 'name': 'Andhra Pradesh'},
+    {'code': '29', 'name': 'Karnataka'},
+    {'code': '30', 'name': 'Goa'},
+    {'code': '31', 'name': 'Lakshadweep'},
+    {'code': '32', 'name': 'Kerala'},
+    {'code': '33', 'name': 'Tamil Nadu'},
+    {'code': '34', 'name': 'Puducherry'},
+    {'code': '35', 'name': 'Andaman and Nicobar Islands'},
+    {'code': '36', 'name': 'Telangana'},
+    {'code': '37', 'name': 'Andhra Pradesh (New)'},
+    {'code': '97', 'name': 'Other Territory'},
+  ];
 
   @override
   void initState() {
@@ -57,6 +114,18 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         _invoiceController.text = sale.invoice;
         _selectedDate = sale.date;
         _saleItems = List.from(sale.items); // Create a mutable copy of items
+
+        // Load GST fields
+        _recipientGSTINController.text = sale.recipientGSTIN ?? '';
+        _selectedPlaceOfSupply = sale.placeOfSupply ?? '';
+        _selectedSupplyType = sale.supplyType ?? 'INTRA';
+        _selectedSaleType = sale.saleType ?? 'CASH';
+        _selectedDocumentType = sale.documentType ?? 'INV';
+        _isReverseCharge = sale.isReverseCharge ?? false;
+        _eWayBillController.text = sale.eWayBillNo ?? '';
+        _selectedTransportMode = sale.transportMode ?? 'Road';
+        _distanceController.text = sale.distance?.toString() ?? '';
+
         _calculateOverallTotal(); // Recalculate total based on loaded items
         debugPrint('Sale data loaded for ID: ${widget.saleId}'); // Debug print
       } else {
@@ -74,6 +143,80 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         setState(() => _isLoading = false);
       }
     }
+  }
+
+  /// GST validation method
+  String? _validateGSTIN(String? value) {
+    if (value == null || value.trim().isEmpty) return null; // Optional field
+
+    final gstin = value.trim().toUpperCase();
+    if (gstin.length != 15) {
+      return 'GSTIN must be 15 characters';
+    }
+
+    // Basic GSTIN format validation
+    final gstinRegex = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$');
+    if (!gstinRegex.hasMatch(gstin)) {
+      return 'Invalid GSTIN format';
+    }
+
+    return null;
+  }
+
+  /// Auto-determine supply type based on GSTIN
+  void _updateSupplyType() {
+    if (_recipientGSTINController.text.length >= 2 && _selectedPlaceOfSupply.isNotEmpty) {
+      final recipientStateCode = _recipientGSTINController.text.substring(0, 2);
+      final posStateCode = _selectedPlaceOfSupply;
+
+      setState(() {
+        _selectedSupplyType = (recipientStateCode == posStateCode) ? 'INTRA' : 'INTER';
+      });
+
+      // Auto-update tax structure for all items
+      _updateAllItemsTaxStructure();
+    }
+  }
+
+  /// Update tax structure for all items based on supply type
+  void _updateAllItemsTaxStructure() {
+    for (int i = 0; i < _saleItems.length; i++) {
+      final item = _saleItems[i];
+
+      // Recalculate tax amounts based on supply type
+      final cgstAmount = _selectedSupplyType == 'INTRA' ?
+      item.totalTaxableValue * (item.cgstRate / 100) : 0.0;
+      final sgstAmount = _selectedSupplyType == 'INTRA' ?
+      item.totalTaxableValue * (item.sgstRate / 100) : 0.0;
+      final igstAmount = _selectedSupplyType == 'INTER' ?
+      item.totalTaxableValue * (item.igstRate / 100) : 0.0;
+      final cessAmount = item.totalTaxableValue * (item.cessRate / 100);
+
+      final itemTotal = item.totalTaxableValue + cgstAmount + sgstAmount + igstAmount + cessAmount;
+
+      final newItem = SaleItem(
+        itemId: item.itemId,
+        itemCode: item.itemCode,
+        description: item.description,
+        hsnSacCode: item.hsnSacCode,
+        unitOfMeasurement: item.unitOfMeasurement,
+        quantity: item.quantity,
+        sellingPricePerUnit: item.sellingPricePerUnit,
+        cgstRate: item.cgstRate,
+        sgstRate: item.sgstRate,
+        igstRate: item.igstRate,
+        cessRate: item.cessRate,
+        totalTaxableValue: item.totalTaxableValue,
+        integratedTaxAmount: igstAmount.toDouble(),
+        centralTaxAmount: cgstAmount.toDouble(),
+        stateTaxAmount: sgstAmount.toDouble(),
+        cessAmount: cessAmount.toDouble(),
+        itemTotal: itemTotal.toDouble(),
+        supplyType: _selectedSupplyType,
+      );
+      _saleItems[i] = newItem;
+    }
+    _calculateOverallTotal();
   }
 
   /// Calculates the total amount of the sale based on all added items.
@@ -289,10 +432,19 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
       final sellingPricePerUnit = itemMaster.sellingPrice;
       final totalTaxableValue = sellingPricePerUnit * quantity;
 
-      // Calculate tax amounts
-      final cgstAmount = totalTaxableValue * (itemMaster.cgstRate / 100);
-      final sgstAmount = totalTaxableValue * (itemMaster.sgstRate / 100);
-      final igstAmount = totalTaxableValue * (itemMaster.igstRate / 100);
+      // Calculate tax amounts based on supply type
+      final cgstAmount = _selectedSupplyType == 'INTRA'
+          ? totalTaxableValue * (itemMaster.cgstRate / 100)
+          : 0.0; // <-- use 0.0 instead of 0
+
+      final sgstAmount = _selectedSupplyType == 'INTRA'
+          ? totalTaxableValue * (itemMaster.sgstRate / 100)
+          : 0.0;
+
+      final igstAmount = _selectedSupplyType == 'INTER'
+          ? totalTaxableValue * (itemMaster.igstRate / 100)
+          : 0.0;
+
       final cessAmount = totalTaxableValue * (itemMaster.cessRate / 100);
 
       final itemTotal = totalTaxableValue + cgstAmount + sgstAmount + igstAmount + cessAmount;
@@ -309,13 +461,15 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         sgstRate: itemMaster.sgstRate,
         igstRate: itemMaster.igstRate,
         cessRate: itemMaster.cessRate,
-        totalTaxableValue: totalTaxableValue,
-        integratedTaxAmount: itemMaster.igstRate > 0 ? igstAmount : 0,
-        centralTaxAmount: itemMaster.cgstRate > 0 ? cgstAmount : 0,
-        stateTaxAmount: itemMaster.sgstRate > 0 ? sgstAmount : 0,
-        cessAmount: itemMaster.cessRate > 0 ? cessAmount : 0,
-        itemTotal: itemTotal,
+        totalTaxableValue: totalTaxableValue.toDouble(),
+        integratedTaxAmount: igstAmount.toDouble(),
+        centralTaxAmount: cgstAmount.toDouble(),
+        stateTaxAmount: sgstAmount.toDouble(),
+        cessAmount: cessAmount.toDouble(),
+        itemTotal: itemTotal.toDouble(),
+        supplyType: _selectedSupplyType,
       );
+
 
       setState(() {
         if (existingItem != null && index != null) {
@@ -347,6 +501,214 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     debugPrint('Sale item removed: $removedItemDescription'); // Debug print
   }
 
+  /// Build GST form fields
+  Widget _buildGSTFormFields() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'GST Details',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 16),
+
+        // Recipient GSTIN
+        TextFormField(
+          controller: _recipientGSTINController,
+          decoration: const InputDecoration(
+            labelText: 'Recipient GSTIN (Optional)',
+            hintText: 'Enter 15-digit GSTIN',
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          textCapitalization: TextCapitalization.characters,
+          maxLength: 15,
+          validator: _validateGSTIN,
+          onChanged: (value) {
+            _updateSupplyType();
+          },
+        ),
+        const SizedBox(height: 16),
+
+        // Place of Supply
+        DropdownButtonFormField<String>(
+          value: _selectedPlaceOfSupply.isEmpty ? null : _selectedPlaceOfSupply,
+          decoration: const InputDecoration(
+            labelText: 'Place of Supply (POS)',
+            border: OutlineInputBorder(),
+            filled: true,
+            fillColor: Colors.white,
+          ),
+          items: _stateCodes.map((state) {
+            return DropdownMenuItem<String>(
+              value: state['code'],
+              child: Text('${state['code']} - ${state['name']}'),
+            );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedPlaceOfSupply = value ?? '';
+            });
+            _updateSupplyType();
+          },
+          validator: (value) => value == null ? 'Please select Place of Supply' : null,
+        ),
+        const SizedBox(height: 16),
+
+        // Supply Type and Sale Type Row
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _selectedSupplyType,
+                decoration: const InputDecoration(
+                  labelText: 'Supply Type',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'INTRA', child: Text('Intra State')),
+                  DropdownMenuItem(value: 'INTER', child: Text('Inter State')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSupplyType = value ?? 'INTRA';
+                  });
+                  _updateAllItemsTaxStructure();
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _selectedSaleType,
+                decoration: const InputDecoration(
+                  labelText: 'Sale Type',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'CASH', child: Text('Cash Sale')),
+                  DropdownMenuItem(value: 'CREDIT', child: Text('Credit Sale')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedSaleType = value ?? 'CASH';
+                  });
+                },
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Document Type and Reverse Charge
+        Row(
+          children: [
+            Expanded(
+              child: DropdownButtonFormField<String>(
+                value: _selectedDocumentType,
+                decoration: const InputDecoration(
+                  labelText: 'Document Type',
+                  border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'INV', child: Text('Invoice')),
+                  DropdownMenuItem(value: 'DBN', child: Text('Debit Note')),
+                  DropdownMenuItem(value: 'CDN', child: Text('Credit Note')),
+                ],
+                onChanged: (value) {
+                  setState(() {
+                    _selectedDocumentType = value ?? 'INV';
+                  });
+                },
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: CheckboxListTile(
+                title: const Text('Reverse Charge'),
+                value: _isReverseCharge,
+                onChanged: (value) {
+                  setState(() {
+                    _isReverseCharge = value ?? false;
+                  });
+                },
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+              ),
+            ),
+          ],
+        ),
+
+        // E-Way Bill Section (show only for goods > 50k value)
+        if (_totalSaleAmount > 50000) ...[
+          const SizedBox(height: 16),
+          const Text(
+            'E-Way Bill Details (Required for sales > ₹50,000)',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: _eWayBillController,
+            decoration: const InputDecoration(
+              labelText: 'E-Way Bill Number',
+              border: OutlineInputBorder(),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedTransportMode,
+                  decoration: const InputDecoration(
+                    labelText: 'Transport Mode',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Road', child: Text('Road')),
+                    DropdownMenuItem(value: 'Rail', child: Text('Rail')),
+                    DropdownMenuItem(value: 'Air', child: Text('Air')),
+                    DropdownMenuItem(value: 'Ship', child: Text('Ship')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedTransportMode = value ?? 'Road';
+                    });
+                  },
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextFormField(
+                  controller: _distanceController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Distance (km)',
+                    border: OutlineInputBorder(),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+        const SizedBox(height: 24),
+      ],
+    );
+  }
+
   /// Saves or updates the sale in Firestore.
   Future<void> _saveSale() async {
     if (!_formKey.currentState!.validate()) {
@@ -370,6 +732,14 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     setState(() => _isLoading = true);
 
     try {
+      // Determine GSTR-1 section
+      String gstr1Section = 'B2C_SMALL';
+      if (_recipientGSTINController.text.trim().isNotEmpty) {
+        gstr1Section = 'B2B';
+      } else if (_totalSaleAmount > 250000) {
+        gstr1Section = 'B2C_LARGE';
+      }
+
       final saleData = SaleMaster(
         id: widget.saleId ?? '', // ID will be set by Firestore for new sales
         businessId: widget.businessId,
@@ -378,6 +748,17 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         date: _selectedDate,
         total: _totalSaleAmount,
         items: _saleItems, // Save the list of sale items
+        // GST FIELDS
+        recipientGSTIN: _recipientGSTINController.text.trim().toUpperCase(),
+        placeOfSupply: _selectedPlaceOfSupply,
+        supplyType: _selectedSupplyType,
+        saleType: _selectedSaleType,
+        gstr1Section: gstr1Section,
+        eWayBillNo: _eWayBillController.text.trim().isEmpty ? null : _eWayBillController.text.trim(),
+        transportMode: _totalSaleAmount > 50000 ? _selectedTransportMode : null,
+        distance: _distanceController.text.trim().isEmpty ? null : double.tryParse(_distanceController.text.trim()),
+        documentType: _selectedDocumentType,
+        isReverseCharge: _isReverseCharge,
       ).toFirestore();
 
       if (widget.saleId != null && widget.saleId!.isNotEmpty) {
@@ -415,6 +796,9 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   void dispose() {
     _customerNameController.dispose();
     _invoiceController.dispose();
+    _recipientGSTINController.dispose();
+    _eWayBillController.dispose();
+    _distanceController.dispose();
     super.dispose();
   }
 
@@ -489,6 +873,10 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
                       ),
                     ),
                     const SizedBox(height: 24),
+
+                    // GST FORM FIELDS
+                    _buildGSTFormFields(),
+
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -518,29 +906,29 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
                         ),
                       ),
                     )
-                        : Container( // Added Container for styling the table
+                        : Container(
                       decoration: BoxDecoration(
                         border: Border.all(color: Colors.grey.shade300),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: ClipRRect( // Clip content to rounded corners
+                      child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
                         child: SingleChildScrollView(
                           scrollDirection: Axis.horizontal,
-                          clipBehavior: Clip.hardEdge, // Ensure clipping
+                          clipBehavior: Clip.hardEdge,
                           child: ConstrainedBox(
                             constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
                             child: DataTable(
                               columnSpacing: 12,
-                              horizontalMargin: 12, // Adjusted margin
-                              headingRowColor: MaterialStateProperty.resolveWith((states) => const Color(0xFF667eea).withOpacity(0.1)), // Light primary color
+                              horizontalMargin: 12,
+                              headingRowColor: MaterialStateProperty.resolveWith((states) => const Color(0xFF667eea).withOpacity(0.1)),
                               dataRowColor: MaterialStateProperty.resolveWith((states) {
                                 if (states.contains(MaterialState.selected)) {
                                   return Theme.of(context).colorScheme.primary.withOpacity(0.08);
                                 }
-                                return null; // Use default for other states
+                                return null;
                               }),
-                              decoration: BoxDecoration( // Added decoration for inner table border
+                              decoration: BoxDecoration(
                                 border: Border.all(color: Colors.grey.shade200),
                                 borderRadius: BorderRadius.circular(8),
                               ),
@@ -579,7 +967,30 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
                                       DataCell(Text(item.stateTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
                                       DataCell(Text(item.cessAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
                                       DataCell(Text(item.itemTotal.toStringAsFixed(2), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87))),
-                                      DataCell(                                        Row(                                          mainAxisSize: MainAxisSize.min,                                          children: [                                            IconButton(                                              icon: const Icon(Icons.edit, size: 20, color: Colors.orange),                                              onPressed: () => _addItemToSale(existingItem: item, index: index),                                            ),                                            IconButton(                                              icon: const Icon(Icons.delete, size: 20, color: Colors.red),                                              onPressed: () => _removeItemFromSale(index),                                            ),                                          ],                                        ),                                      ),                                    ],                                  );                                },                              ),                            ),                          ),                        ),                      ),                    ),
+                                      DataCell(
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            IconButton(
+                                              icon: const Icon(Icons.edit, size: 20, color: Colors.orange),
+                                              onPressed: () => _addItemToSale(existingItem: item, index: index),
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.delete, size: 20, color: Colors.red),
+                                              onPressed: () => _removeItemFromSale(index),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 24),
                     Align(
                       alignment: Alignment.centerRight,

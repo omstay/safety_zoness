@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.gst.safetyzoness"
-        minSdk = 23  // Updated from 21 to 23
+        minSdkVersion flutter.minSdkVersion  // Updated from 21 to 23
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
