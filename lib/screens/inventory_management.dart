@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart'; // Added for DateFormat
 import 'package:safetyzoness/screens/pdf_utils.dart';
-import '../model/SaleMaster.dart';
-import 'add_edit_sale_screen.dart';
+import 'package:safetyzoness/screens/report/sales_by_hsn_report_screen.dart';
+import '../model/SaleMaster.dart'; // Import the updated SaleMaster and SaleItem
+import 'add_edit_sale_screen.dart'; // Import the new AddEditSaleScreen
+import 'package:flutter/foundation.dart'; // Import for debugPrint
 
 // Data Models with improved dynamic data handling
 class ItemMaster {
@@ -46,36 +48,34 @@ class ItemMaster {
     if (data == null) {
       throw Exception('Document data is null');
     }
-
     final Map<String, dynamic> map = data as Map<String, dynamic>;
-
     return ItemMaster(
       id: doc.id,
-      businessId: _getStringValue(map, 'businessId'),
-      itemCode: _getStringValue(map, 'itemCode'),
-      description: _getStringValue(map, 'description'),
-      hsnSacCode: _getStringValue(map, 'hsnSacCode'),
-      unitOfMeasurement: _getStringValue(map, 'unitOfMeasurement'),
-      cgstRate: _getDoubleValue(map, 'cgstRate'),
-      sgstRate: _getDoubleValue(map, 'sgstRate'),
-      igstRate: _getDoubleValue(map, 'igstRate'),
-      cessRate: _getDoubleValue(map, 'cessRate'),
-      sellingPrice: _getDoubleValue(map, 'sellingPrice'),
-      costPrice: _getDoubleValue(map, 'costPrice'),
-      profitMargin: _getDoubleValue(map, 'profitMargin'),
-      isActive: _getBoolValue(map, 'isActive'),
-      createdAt: _getDateTimeValue(map, 'createdAt'),
+      businessId: getStringValue(map, 'businessId'),
+      itemCode: getStringValue(map, 'itemCode'),
+      description: getStringValue(map, 'description'),
+      hsnSacCode: getStringValue(map, 'hsnSacCode'),
+      unitOfMeasurement: getStringValue(map, 'unitOfMeasurement'),
+      cgstRate: getDoubleValue(map, 'cgstRate'),
+      sgstRate: getDoubleValue(map, 'sgstRate'),
+      igstRate: getDoubleValue(map, 'igstRate'),
+      cessRate: getDoubleValue(map, 'cessRate'),
+      sellingPrice: getDoubleValue(map, 'sellingPrice'),
+      costPrice: getDoubleValue(map, 'costPrice'),
+      profitMargin: getDoubleValue(map, 'profitMargin'),
+      isActive: getBoolValue(map, 'isActive'),
+      createdAt: getDateTimeValue(map, 'createdAt'),
     );
   }
 
-  // Helper methods for safe data extraction
-  static String _getStringValue(Map<String, dynamic> map, String key) {
+  // Helper methods for safe data extraction (made public for external access)
+  static String getStringValue(Map<String, dynamic> map, String key) {
     final value = map[key];
     if (value == null) return '';
     return value.toString();
   }
 
-  static double _getDoubleValue(Map<String, dynamic> map, String key) {
+  static double getDoubleValue(Map<String, dynamic> map, String key) {
     final value = map[key];
     if (value == null) return 0.0;
     if (value is num) return value.toDouble();
@@ -83,7 +83,7 @@ class ItemMaster {
     return 0.0;
   }
 
-  static bool _getBoolValue(Map<String, dynamic> map, String key) {
+  static bool getBoolValue(Map<String, dynamic> map, String key) {
     final value = map[key];
     if (value == null) return true;
     if (value is bool) return value;
@@ -91,7 +91,7 @@ class ItemMaster {
     return true;
   }
 
-  static DateTime _getDateTimeValue(Map<String, dynamic> map, String key) {
+  static DateTime getDateTimeValue(Map<String, dynamic> map, String key) {
     final value = map[key];
     if (value == null) return DateTime.now();
     if (value is Timestamp) return value.toDate();
@@ -143,17 +143,15 @@ class StockInventory {
     if (data == null) {
       throw Exception('Document data is null');
     }
-
     final Map<String, dynamic> map = data as Map<String, dynamic>;
-
     return StockInventory(
       id: doc.id,
-      businessId: ItemMaster._getStringValue(map, 'businessId'),
-      itemId: ItemMaster._getStringValue(map, 'itemId'),
-      location: ItemMaster._getStringValue(map, 'location'),
-      currentStock: ItemMaster._getDoubleValue(map, 'currentStock'),
-      minimumStockLevel: ItemMaster._getDoubleValue(map, 'minimumStockLevel'),
-      lastUpdated: ItemMaster._getDateTimeValue(map, 'lastUpdated'),
+      businessId: ItemMaster.getStringValue(map, 'businessId'),
+      itemId: ItemMaster.getStringValue(map, 'itemId'),
+      location: ItemMaster.getStringValue(map, 'location'),
+      currentStock: ItemMaster.getDoubleValue(map, 'currentStock'),
+      minimumStockLevel: ItemMaster.getDoubleValue(map, 'minimumStockLevel'),
+      lastUpdated: ItemMaster.getDateTimeValue(map, 'lastUpdated'),
     );
   }
 
@@ -183,7 +181,6 @@ class BusinessConfig {
 // Add Stock Dialog Widget
 class AddStockDialog extends StatefulWidget {
   final String businessId;
-
   const AddStockDialog({super.key, required this.businessId});
 
   @override
@@ -193,12 +190,10 @@ class AddStockDialog extends StatefulWidget {
 class _AddStockDialogState extends State<AddStockDialog> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
-
   String? _selectedItemId;
   final _locationController = TextEditingController();
   final _currentStockController = TextEditingController();
   final _minStockController = TextEditingController();
-
   List<ItemMaster> _items = [];
   bool _isLoading = false;
 
@@ -215,14 +210,13 @@ class _AddStockDialogState extends State<AddStockDialog> {
           .where('businessId', isEqualTo: widget.businessId)
           .where('isActive', isEqualTo: true)
           .get();
-
       setState(() {
         _items = snapshot.docs
             .map((doc) {
           try {
             return ItemMaster.fromFirestore(doc);
           } catch (e) {
-            print('Error parsing item ${doc.id}: $e');
+            debugPrint('Error parsing item ${doc.id}: $e'); // Debug print
             return null;
           }
         })
@@ -239,11 +233,17 @@ class _AddStockDialogState extends State<AddStockDialog> {
           ),
         );
       }
+      debugPrint('Error loading items: $e'); // Debug print
     }
   }
 
   Future<void> _saveStock() async {
-    if (!_formKey.currentState!.validate() || _selectedItemId == null) {
+    if (!_formKey.currentState!.validate()) {
+      debugPrint('AddStockDialog: Form validation failed.'); // Debug print
+      return;
+    }
+    if (_selectedItemId == null) {
+      debugPrint('AddStockDialog: No item selected.'); // Debug print
       return;
     }
 
@@ -268,6 +268,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
           ),
         );
       }
+      debugPrint('Stock added successfully for item ID: $_selectedItemId'); // Debug print
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -277,6 +278,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
           ),
         );
       }
+      debugPrint('Error saving stock: $e'); // Debug print
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -308,6 +310,8 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Select Item',
                   border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 items: _items.map((item) {
                   return DropdownMenuItem<String>(
@@ -331,13 +335,14 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 },
               ),
               const SizedBox(height: 16),
-
               // Location Field
               TextFormField(
                 controller: _locationController,
                 decoration: const InputDecoration(
                   labelText: 'Location',
                   border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -347,7 +352,6 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 },
               ),
               const SizedBox(height: 16),
-
               // Current Stock Field
               TextFormField(
                 controller: _currentStockController,
@@ -355,6 +359,8 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Current Stock',
                   border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -368,7 +374,6 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 },
               ),
               const SizedBox(height: 16),
-
               // Minimum Stock Level Field
               TextFormField(
                 controller: _minStockController,
@@ -376,6 +381,8 @@ class _AddStockDialogState extends State<AddStockDialog> {
                 decoration: const InputDecoration(
                   labelText: 'Minimum Stock Level',
                   border: OutlineInputBorder(),
+                  filled: true,
+                  fillColor: Colors.white,
                 ),
                 validator: (value) {
                   if (value == null || value.trim().isEmpty) {
@@ -422,7 +429,6 @@ class _AddStockDialogState extends State<AddStockDialog> {
 // Main Inventory Management Screen - No Authentication Required
 class InventoryManagementScreen extends StatefulWidget {
   final String? businessId; // Optional parameter to override default
-
   const InventoryManagementScreen({super.key, this.businessId});
 
   @override
@@ -433,8 +439,11 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-
   late String _currentBusinessId;
+
+  // GlobalKeys to access child tab states
+  final GlobalKey<_SalesTabState> _salesTabKey = GlobalKey<_SalesTabState>();
+  final GlobalKey<_ItemsTabState> _itemsTabKey = GlobalKey<_ItemsTabState>();
 
   @override
   void initState() {
@@ -475,8 +484,8 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          SalesTab(businessId: _currentBusinessId,),
-          ItemsTab(businessId: _currentBusinessId),
+          SalesTab(key: _salesTabKey, businessId: _currentBusinessId,), // Assign key
+          ItemsTab(key: _itemsTabKey, businessId: _currentBusinessId), // Assign key
           StockTab(businessId: _currentBusinessId),
           ReportsTab(businessId: _currentBusinessId),
         ],
@@ -484,15 +493,27 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       floatingActionButton: AnimatedBuilder(
         animation: _tabController,
         builder: (context, child) {
-          if (_tabController.index == 1) {
+          if (_tabController.index == 0) { // Sales Tab
             return FloatingActionButton.extended(
-              onPressed: () => _showAddItemDialog(),
+              onPressed: () {
+                _salesTabKey.currentState?.showAddSaleDialog(); // Call public method via key
+              },
+              backgroundColor: const Color(0xFF667eea),
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add),
+              label: const Text('Add New Sale'),
+            );
+          } else if (_tabController.index == 1) { // Items Tab
+            return FloatingActionButton.extended(
+              onPressed: () {
+                _itemsTabKey.currentState?.showAddItemDialog(); // Call public method via key
+              },
               backgroundColor: const Color(0xFF667eea),
               foregroundColor: Colors.white,
               icon: const Icon(Icons.add),
               label: const Text('Add Item'),
             );
-          } else if (_tabController.index == 2) {
+          } else if (_tabController.index == 2) { // Stock Tab
             return FloatingActionButton.extended(
               onPressed: () => _showAddStockDialog(),
               backgroundColor: const Color(0xFF4CAF50),
@@ -513,11 +534,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
     super.dispose();
   }
 
-  void _showAddItemDialog() {
-    final itemsTabState = context.findAncestorStateOfType<_ItemsTabState>();
-    itemsTabState?._showAddItemDialog();
-  }
-
+  // This method is now only for Stock, as Sales and Items are handled by GlobalKeys
   void _showAddStockDialog() {
     showDialog(
       context: context,
@@ -529,7 +546,6 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
 // Items Tab with improved error handling
 class ItemsTab extends StatefulWidget {
   final String businessId;
-
   const ItemsTab({super.key, required this.businessId});
 
   @override
@@ -540,6 +556,11 @@ class _ItemsTabState extends State<ItemsTab> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Made public for access from parent widget
+  void showAddItemDialog() {
+    _showItemDialog(null);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -574,13 +595,13 @@ class _ItemsTabState extends State<ItemsTab> {
             },
           ),
         ),
-
         // Items List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: _firestore.collection('sales').snapshots(),
+            stream: _firestore.collection('items').where('businessId', isEqualTo: widget.businessId).where('isActive', isEqualTo: true).snapshots(), // Corrected collection to 'items'
             builder: (context, snapshot) {
               if (snapshot.hasError) {
+                debugPrint('ItemsTab StreamBuilder Error: ${snapshot.error}'); // Debug print
                 return Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -597,17 +618,15 @@ class _ItemsTabState extends State<ItemsTab> {
                   ),
                 );
               }
-
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               final items = snapshot.data!.docs
                   .map((doc) {
                 try {
                   return ItemMaster.fromFirestore(doc);
                 } catch (e) {
-                  print('Error parsing item ${doc.id}: $e');
+                  debugPrint('Error parsing item ${doc.id}: $e'); // Debug print
                   return null;
                 }
               })
@@ -631,6 +650,96 @@ class _ItemsTabState extends State<ItemsTab> {
                 },
               );
             },
+          ),
+        ),
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: FloatingActionButton.extended(
+              heroTag: 'generate_items_report',
+              label: const Text('Generate All Items Report'),
+              icon: const Icon(Icons.document_scanner),
+              backgroundColor: Colors.blue,
+              onPressed: () async {
+                try {
+                  final snapshot = await _firestore
+                      .collection('items')
+                      .where('businessId', isEqualTo: widget.businessId)
+                      .where('isActive', isEqualTo: true)
+                      .get();
+                  final items = snapshot.docs
+                      .map((doc) => ItemMaster.fromFirestore(doc))
+                      .toList();
+                  if (items.isEmpty) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No items to export.'), backgroundColor: Colors.orange),
+                      );
+                    }
+                    return;
+                  }
+                  // Show options to download, share, or print
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (BuildContext bc) {
+                      return SafeArea(
+                        child: Wrap(
+                          children: <Widget>[
+                            ListTile(
+                              leading: const Icon(Icons.download),
+                              title: const Text('Download PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.generateAndDownloadAllItemsPDF(items);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Items Report PDF downloaded!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.share),
+                              title: const Text('Share PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.shareAllItemsPDF(items);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Items Report PDF shared!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.print),
+                              title: const Text('Print PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.printAllItemsPDF(items);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Items Report PDF sent to printer!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error generating items report: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                  debugPrint('Error generating all items report: $e');
+                }
+              },
+            ),
           ),
         ),
       ],
@@ -669,7 +778,7 @@ class _ItemsTabState extends State<ItemsTab> {
           if (_searchQuery.isEmpty) ...[
             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: () => _showAddItemDialog(),
+              onPressed: () => showAddItemDialog(), // Call public method
               icon: const Icon(Icons.add),
               label: const Text('Add Item'),
               style: ElevatedButton.styleFrom(
@@ -693,6 +802,7 @@ class _ItemsTabState extends State<ItemsTab> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey.shade200, width: 1), // Added border
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -885,63 +995,87 @@ class _ItemsTabState extends State<ItemsTab> {
     );
   }
 
-  void _showAddItemDialog() {
-    _showItemDialog(null);
-  }
-
   void _showEditItemDialog(ItemMaster item) {
     _showItemDialog(item);
   }
 
   void _showItemDialog(ItemMaster? item) {
     final isEditing = item != null;
+    final _dialogFormKey = GlobalKey<FormState>(); // New form key for the dialog
     final controllers = {
       'itemCode': TextEditingController(text: item?.itemCode ?? ''),
       'description': TextEditingController(text: item?.description ?? ''),
       'hsnSacCode': TextEditingController(text: item?.hsnSacCode ?? ''),
       'unitOfMeasurement': TextEditingController(text: item?.unitOfMeasurement ?? ''),
-      'cgstRate': TextEditingController(text: item?.cgstRate.toString() ?? '0'),
-      'sgstRate': TextEditingController(text: item?.sgstRate.toString() ?? '0'),
-      'igstRate': TextEditingController(text: item?.igstRate.toString() ?? '0'),
-      'cessRate': TextEditingController(text: item?.cessRate.toString() ?? '0'),
-      'sellingPrice': TextEditingController(text: item?.sellingPrice.toString() ?? '0'),
-      'costPrice': TextEditingController(text: item?.costPrice.toString() ?? '0'),
+      'cgstRate': TextEditingController(text: item?.cgstRate.toString() ?? '0.0'),
+      'sgstRate': TextEditingController(text: item?.sgstRate.toString() ?? '0.0'),
+      'igstRate': TextEditingController(text: item?.igstRate.toString() ?? '0.0'),
+      'cessRate': TextEditingController(text: item?.cessRate.toString() ?? '0.0'),
+      'sellingPrice': TextEditingController(text: item?.sellingPrice.toString() ?? '0.0'),
+      'costPrice': TextEditingController(text: item?.costPrice.toString() ?? '0.0'),
     };
 
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: Text(isEditing ? 'Edit Item' : 'Add New Item'),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _buildDialogTextField('Item Code', controllers['itemCode']!),
-              _buildDialogTextField('Description', controllers['description']!),
-              _buildDialogTextField('HSN/SAC Code', controllers['hsnSacCode']!),
-              _buildDialogTextField('Unit of Measurement', controllers['unitOfMeasurement']!),
-              Row(
-                children: [
-                  Expanded(child: _buildDialogTextField('CGST Rate %', controllers['cgstRate']!, isNumber: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildDialogTextField('SGST Rate %', controllers['sgstRate']!, isNumber: true)),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(child: _buildDialogTextField('IGST Rate %', controllers['igstRate']!, isNumber: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildDialogTextField('Cess Rate %', controllers['cessRate']!, isNumber: true)),
-                ],
-              ),
-              Row(
-                children: [
-                  Expanded(child: _buildDialogTextField('Cost Price', controllers['costPrice']!, isNumber: true)),
-                  const SizedBox(width: 8),
-                  Expanded(child: _buildDialogTextField('Selling Price', controllers['sellingPrice']!, isNumber: true)),
-                ],
-              ),
-            ],
+        content: Form( // Wrap content in a Form
+          key: _dialogFormKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildDialogTextField('Item Code', controllers['itemCode']!, validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Item Code is required';
+                  return null;
+                }),
+                _buildDialogTextField('Description', controllers['description']!, validator: (value) {
+                  if (value == null || value.trim().isEmpty) return 'Description is required';
+                  return null;
+                }),
+                _buildDialogTextField('HSN/SAC Code', controllers['hsnSacCode']!),
+                _buildDialogTextField('Unit of Measurement', controllers['unitOfMeasurement']!),
+                Row(
+                  children: [
+                    Expanded(child: _buildDialogTextField('CGST Rate %', controllers['cgstRate']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildDialogTextField('SGST Rate %', controllers['sgstRate']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(child: _buildDialogTextField('IGST Rate %', controllers['igstRate']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildDialogTextField('Cess Rate %', controllers['cessRate']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                  ],
+                ),
+                Row(
+                  children: [
+                    Expanded(child: _buildDialogTextField('Cost Price', controllers['costPrice']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                    const SizedBox(width: 8),
+                    Expanded(child: _buildDialogTextField('Selling Price', controllers['sellingPrice']!, isNumber: true, validator: (value) {
+                      if (double.tryParse(value ?? '') == null) return 'Valid number required';
+                      return null;
+                    })),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -950,7 +1084,13 @@ class _ItemsTabState extends State<ItemsTab> {
             child: const Text('Cancel'),
           ),
           ElevatedButton(
-            onPressed: () => _saveItem(controllers, isEditing, item?.id),
+            onPressed: () {
+              if (_dialogFormKey.currentState!.validate()) { // Validate before saving
+                _saveItem(controllers, isEditing, item?.id);
+              } else {
+                debugPrint('Add/Edit Item Dialog: Form validation failed.'); // Debug print
+              }
+            },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF667eea),
               foregroundColor: Colors.white,
@@ -962,17 +1102,20 @@ class _ItemsTabState extends State<ItemsTab> {
     );
   }
 
-  Widget _buildDialogTextField(String label, TextEditingController controller, {bool isNumber = false}) {
+  Widget _buildDialogTextField(String label, TextEditingController controller, {bool isNumber = false, String? Function(String?)? validator}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: TextField(
+      child: TextFormField( // Changed to TextFormField for validation
         controller: controller,
         keyboardType: isNumber ? const TextInputType.numberWithOptions(decimal: true) : TextInputType.text,
         decoration: InputDecoration(
           labelText: label,
           border: const OutlineInputBorder(),
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          filled: true, // Added filled property
+          fillColor: Colors.white, // Added fill color
         ),
+        validator: validator,
       ),
     );
   }
@@ -1002,8 +1145,10 @@ class _ItemsTabState extends State<ItemsTab> {
 
       if (isEditing && itemId != null) {
         await _firestore.collection('items').doc(itemId).update(itemData);
+        debugPrint('Item updated successfully: $itemId'); // Debug print
       } else {
-        await _firestore.collection('items').add(itemData);
+        final docRef = await _firestore.collection('items').add(itemData);
+        debugPrint('Item added successfully with ID: ${docRef.id}'); // Debug print
       }
 
       if (mounted) {
@@ -1024,6 +1169,7 @@ class _ItemsTabState extends State<ItemsTab> {
           ),
         );
       }
+      debugPrint('Error saving item: $e'); // Debug print
     }
   }
 
@@ -1109,6 +1255,7 @@ class _ItemsTabState extends State<ItemsTab> {
                     ),
                   );
                 }
+                debugPrint('Item deleted successfully: ${item.id}'); // Debug print
               } catch (e) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
@@ -1118,6 +1265,7 @@ class _ItemsTabState extends State<ItemsTab> {
                     ),
                   );
                 }
+                debugPrint('Error deleting item: $e'); // Debug print
               }
             },
             style: ElevatedButton.styleFrom(
@@ -1140,7 +1288,6 @@ class _ItemsTabState extends State<ItemsTab> {
 
 class SalesTab extends StatefulWidget {
   final String businessId;
-
   const SalesTab({super.key, required this.businessId});
 
   @override
@@ -1151,6 +1298,16 @@ class _SalesTabState extends State<SalesTab> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
+
+  // Made public for access from parent widget
+  void showAddSaleDialog() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditSaleScreen(businessId: widget.businessId), // No saleId for new sale
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1166,6 +1323,8 @@ class _SalesTabState extends State<SalesTab> {
               prefixIcon: const Icon(Icons.search),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
               contentPadding: const EdgeInsets.all(16),
+              filled: true,
+              fillColor: Colors.white,
             ),
             onChanged: (value) {
               setState(() {
@@ -1174,7 +1333,6 @@ class _SalesTabState extends State<SalesTab> {
             },
           ),
         ),
-
         // Sales List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
@@ -1184,18 +1342,18 @@ class _SalesTabState extends State<SalesTab> {
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
+                debugPrint('SalesTab StreamBuilder Error: ${snapshot.error}'); // Debug print
                 return const Center(child: Text("Error loading sales"));
               }
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-
               final sales = snapshot.data!.docs
                   .map((doc) {
                 try {
                   return SaleMaster.fromFirestore(doc);
                 } catch (e) {
-                  print('Error parsing sale: $e');
+                  debugPrint('Error parsing sale: $e'); // Debug print
                   return null;
                 }
               })
@@ -1218,26 +1376,95 @@ class _SalesTabState extends State<SalesTab> {
             },
           ),
         ),
-        Row(
-          children: [
-            const Spacer(),
-            ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => AddEditSaleScreen(
-                      businessId: widget.businessId,
-                      saleId: '',
-                      saleDoc: null,
-                    ),
-                  ),
-                );
+        Align(
+          alignment: Alignment.bottomRight,
+          child: Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: FloatingActionButton.extended(
+              heroTag: 'generate_sales_report',
+              label: const Text('Generate All Sales Report'),
+              icon: const Icon(Icons.document_scanner),
+              backgroundColor: Colors.blue,
+              onPressed: () async {
+                try {
+                  final snapshot = await _firestore
+                      .collection('sales')
+                      .where('businessId', isEqualTo: widget.businessId)
+                      .orderBy('date', descending: true)
+                      .get();
+                  final sales = snapshot.docs
+                      .map((doc) => SaleMaster.fromFirestore(doc))
+                      .toList();
+                  if (sales.isEmpty) {
+                    if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('No sales data to export.'), backgroundColor: Colors.orange),
+                      );
+                    }
+                    return;
+                  }
+                  // Show options to download, share, or print
+                  showModalBottomSheet(
+                    context: context,
+                    builder: (BuildContext bc) {
+                      return SafeArea(
+                        child: Wrap(
+                          children: <Widget>[
+                            ListTile(
+                              leading: const Icon(Icons.download),
+                              title: const Text('Download PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.generateAndDownloadAllSalesPDF(sales);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Sales Report PDF downloaded!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.share),
+                              title: const Text('Share PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.shareAllSalesPDF(sales);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Sales Report PDF shared!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                            ListTile(
+                              leading: const Icon(Icons.print),
+                              title: const Text('Print PDF'),
+                              onTap: () async {
+                                Navigator.pop(bc);
+                                await PDFUtils.printAllSalesPDF(sales);
+                                if (mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(content: Text('All Sales Report PDF sent to printer!'), backgroundColor: Colors.green),
+                                  );
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                  );
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error generating sales report: $e'), backgroundColor: Colors.red),
+                    );
+                  }
+                  debugPrint('Error generating all sales report: $e');
+                }
               },
-              icon: const Icon(Icons.add),
-              label: const Text("Add New Sale"),
             ),
-          ],
+          ),
         ),
       ],
     );
@@ -1256,7 +1483,7 @@ class _SalesTabState extends State<SalesTab> {
           ),
           const SizedBox(height: 24),
           ElevatedButton.icon(
-            onPressed: _showAddSaleDialog,
+            onPressed: showAddSaleDialog, // Call public method
             icon: const Icon(Icons.add),
             label: const Text('Add Sale'),
             style: ElevatedButton.styleFrom(
@@ -1297,7 +1524,84 @@ class _SalesTabState extends State<SalesTab> {
             Text('Invoice #: ${sale.invoice}'),
             Text('Date: ${DateFormat('dd MMM yyyy').format(sale.date)}'),
             const SizedBox(height: 12),
-
+            // Display items in sale
+            if (sale.items.isNotEmpty) ...[
+              const Text(
+                'Items:',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              // Use a DataTable or similar for items, matching the screenshot format
+              Container( // Added Container for styling the table
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: ClipRRect( // Clip content to rounded corners
+                  borderRadius: BorderRadius.circular(8),
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    clipBehavior: Clip.hardEdge, // Ensure clipping
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 64), // Adjust width as needed
+                      child: DataTable(
+                        columnSpacing: 12,
+                        horizontalMargin: 12, // Adjusted margin
+                        headingRowColor: MaterialStateProperty.resolveWith((states) => const Color(0xFF667eea).withOpacity(0.1)), // Light primary color
+                        dataRowColor: MaterialStateProperty.resolveWith((states) {
+                          if (states.contains(MaterialState.selected)) {
+                            return Theme.of(context).colorScheme.primary.withOpacity(0.08);
+                          }
+                          return null; // Use default for other states
+                        }),
+                        decoration: BoxDecoration( // Added decoration for inner table border
+                          border: Border.all(color: Colors.grey.shade200),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        columns: [
+                          DataColumn(label: Text('Sr No.', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('HSN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Description', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('UQC', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Taxable Value (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Rate (%)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('IGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('CGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('SGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Cess (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                          DataColumn(label: Text('Total (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
+                        ],
+                        rows: List<DataRow>.generate(
+                          sale.items.length,
+                              (index) {
+                            final item = sale.items[index];
+                            final totalTaxRate = item.igstRate > 0 ? item.igstRate : (item.cgstRate + item.sgstRate);
+                            return DataRow(
+                              cells: [
+                                DataCell(Text((index + 1).toString(), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.hsnSacCode, style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.description, style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.unitOfMeasurement, style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.quantity.toStringAsFixed(1), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.totalTaxableValue.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text('${totalTaxRate.toStringAsFixed(1)}%', style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.integratedTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.centralTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.stateTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.cessAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
+                                DataCell(Text(item.itemTotal.toStringAsFixed(2), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87))),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -1335,23 +1639,14 @@ class _SalesTabState extends State<SalesTab> {
     );
   }
 
-  void _showAddSaleDialog() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddEditSaleScreen(businessId: widget.businessId, saleId: ''),
-      ),
-    );
-  }
-
   void _showEditSaleDialog(SaleMaster sale) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (_) => AddEditSaleScreen(
           businessId: widget.businessId,
-          saleId: sale.id, // ← Pass saleId here
-          saleDoc: null,
+          saleId: sale.id,
+          saleDoc: null, // Pass saleId, screen will fetch doc
         ),
       ),
     );
@@ -1363,10 +1658,12 @@ class _SalesTabState extends State<SalesTab> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Sale deleted'), backgroundColor: Colors.green),
       );
+      debugPrint('Sale deleted successfully: $saleId'); // Debug print
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
       );
+      debugPrint('Error deleting sale: $e'); // Debug print
     }
   }
 
@@ -1392,7 +1689,6 @@ class _SalesTabState extends State<SalesTab> {
 // Stock Tab with improved error handling
 class StockTab extends StatefulWidget {
   final String businessId;
-
   const StockTab({super.key, required this.businessId});
 
   @override
@@ -1411,6 +1707,7 @@ class _StockTabState extends State<StockTab> {
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
+          debugPrint('StockTab StreamBuilder Error: ${snapshot.error}'); // Debug print
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -1427,17 +1724,15 @@ class _StockTabState extends State<StockTab> {
             ),
           );
         }
-
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
         }
-
         final stocks = snapshot.data!.docs
             .map((doc) {
           try {
             return StockInventory.fromFirestore(doc);
           } catch (e) {
-            print('Error parsing stock ${doc.id}: $e');
+            debugPrint('Error parsing stock ${doc.id}: $e'); // Debug print
             return null;
           }
         })
@@ -1494,13 +1789,12 @@ class _StockTabState extends State<StockTab> {
 
   Widget _buildStockCard(StockInventory stock) {
     final isLowStock = stock.currentStock <= stock.minimumStockLevel;
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        border: isLowStock ? Border.all(color: Colors.orange, width: 2) : null,
+        border: isLowStock ? Border.all(color: Colors.orange, width: 2) : Border.all(color: Colors.grey.shade200, width: 1), // Added border
         boxShadow: [
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
@@ -1553,6 +1847,7 @@ class _StockTabState extends State<StockTab> {
                                 overflow: TextOverflow.ellipsis,
                               );
                             } catch (e) {
+                              debugPrint('Error loading item for stock card: $e'); // Debug print
                               return const Text(
                                 'Error loading item',
                                 style: TextStyle(
@@ -1653,11 +1948,17 @@ class _StockTabState extends State<StockTab> {
   }
 }
 
-// Reports Tab with placeholder functionality
-class ReportsTab extends StatelessWidget {
+// Enhanced Reports Tab with Real Data Analysis
+class ReportsTab extends StatefulWidget {
   final String businessId;
-
   const ReportsTab({super.key, required this.businessId});
+
+  @override
+  State<ReportsTab> createState() => _ReportsTabState();
+}
+
+class _ReportsTabState extends State<ReportsTab> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   @override
   Widget build(BuildContext context) {
@@ -1675,33 +1976,231 @@ class ReportsTab extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 20),
-          _buildReportCard(
-            'Stock Summary',
-            'Overview of current stock levels',
-            Icons.analytics,
-            const Color(0xFF4CAF50),
-                () => _showStockSummaryReport(context),
+          // Summary Cards Row
+          Row(
+            children: [
+              Expanded(child: _buildSummaryCard()),
+              const SizedBox(width: 12),
+              Expanded(child: _buildLowStockCard()),
+            ],
           ),
-          _buildReportCard(
-            'Low Stock Alert',
-            'Items running low on stock',
-            Icons.warning,
-            const Color(0xFFFF9800),
-                () => _showLowStockReport(context),
+          const SizedBox(height: 20),
+          // Reports List
+          Expanded(
+            child: ListView(
+              children: [
+                _buildReportCard(
+                  'Stock Summary',
+                  'Overview of current stock levels',
+                  Icons.analytics,
+                  const Color(0xFF4CAF50),
+                      () => _showStockSummaryReport(context),
+                ),
+                _buildReportCard(
+                  'Low Stock Alert',
+                  'Items running low on stock',
+                  Icons.warning,
+                  const Color(0xFFFF9800),
+                      () => _showLowStockReport(context),
+                ),
+                _buildReportCard(
+                  'Sales Performance (HSN)', // Updated title
+                  'Track sales trends and performance by HSN/SAC code', // Updated subtitle
+                  Icons.trending_up,
+                  const Color(0xFF2196F3),
+                      () => _showSalesByHsnReport(context), // NEW: Navigate to HSN report screen
+                ),
+                _buildReportCard(
+                  'Valuation Report',
+                  'Total inventory valuation',
+                  Icons.account_balance,
+                  const Color(0xFF9C27B0),
+                      () => _showValuationReport(context),
+                ),
+                _buildReportCard(
+                  'Profit Analysis',
+                  'Analyze profit margins by item',
+                  Icons.show_chart,
+                  const Color(0xFFE91E63),
+                      () => _showProfitAnalysisReport(context),
+                ),
+              ],
+            ),
           ),
-          _buildReportCard(
-            'Stock Movement',
-            'Track stock in and out movements',
-            Icons.swap_horiz,
-            const Color(0xFF2196F3),
-                () => _showStockMovementReport(context),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSummaryCard() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('items')
+          .where('businessId', isEqualTo: widget.businessId)
+          .where('isActive', isEqualTo: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        int totalItems = snapshot.hasData ? snapshot.data!.docs.length : 0;
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          _buildReportCard(
-            'Valuation Report',
-            'Total inventory valuation',
-            Icons.account_balance,
-            const Color(0xFF9C27B0),
-                () => _showValuationReport(context),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.inventory, color: Colors.blue.shade600, size: 24),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Total Items',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                totalItems.toString(),
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildLowStockCard() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: _firestore
+          .collection('stock_inventory')
+          .where('businessId', isEqualTo: widget.businessId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return _buildSummaryCardSkeleton();
+        }
+        int lowStockCount = 0;
+        for (var doc in snapshot.data!.docs) {
+          try {
+            final data = doc.data() as Map<String, dynamic>;
+            final currentStock = ItemMaster.getDoubleValue(data, 'currentStock');
+            final minStock = ItemMaster.getDoubleValue(data, 'minimumStockLevel');
+            if (currentStock <= minStock) {
+              lowStockCount++;
+            }
+          } catch (e) {
+            debugPrint('Error calculating low stock count: $e'); // Debug print
+            // Handle parsing errors
+          }
+        }
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: lowStockCount > 0 ? Border.all(color: Colors.orange, width: 2) : null,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.warning,
+                    color: lowStockCount > 0 ? Colors.orange : Colors.green,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Low Stock',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(
+                lowStockCount.toString(),
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: lowStockCount > 0 ? Colors.orange : Colors.green,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryCardSkeleton() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.warning, color: Colors.grey.shade400, size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Loading...',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.grey,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            '0',
+            style: TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
           ),
         ],
       ),
@@ -1758,7 +2257,82 @@ class ReportsTab extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Stock Summary Report'),
-        content: const Text('This feature will show a comprehensive overview of all stock levels across different locations.'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('stock_inventory')
+                .where('businessId', isEqualTo: widget.businessId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('No stock data available'),
+                );
+              }
+              return ListView.builder(
+                itemCount: snapshot.data!.docs.length,
+                itemBuilder: (context, index) {
+                  final doc = snapshot.data!.docs[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final itemId = ItemMaster.getStringValue(data, 'itemId');
+                  final location = ItemMaster.getStringValue(data, 'location');
+                  final currentStock = ItemMaster.getDoubleValue(data, 'currentStock');
+                  final minStock = ItemMaster.getDoubleValue(data, 'minimumStockLevel');
+                  final isLowStock = currentStock <= minStock;
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: _firestore.collection('items').doc(itemId).get(),
+                    builder: (context, itemSnapshot) {
+                      String itemName = 'Unknown Item';
+                      if (itemSnapshot.hasData && itemSnapshot.data!.exists) {
+                        try {
+                          final item = ItemMaster.fromFirestore(itemSnapshot.data!);
+                          itemName = item.description.isNotEmpty ? item.description : 'Unnamed Item';
+                        } catch (e) {
+                          debugPrint('Error loading item for stock summary: $e'); // Debug print
+                          itemName = 'Error loading item';
+                        }
+                      }
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: ListTile(
+                          leading: Icon(
+                            Icons.inventory,
+                            color: isLowStock ? Colors.orange : Colors.green,
+                          ),
+                          title: Text(itemName),
+                          subtitle: Text('Location: $location'),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Stock: ${currentStock.toStringAsFixed(1)}',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: isLowStock ? Colors.orange : Colors.green,
+                                ),
+                              ),
+                              Text(
+                                'Min: ${minStock.toStringAsFixed(1)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1774,7 +2348,110 @@ class ReportsTab extends StatelessWidget {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Low Stock Alert Report'),
-        content: const Text('This feature will display all items that are currently below their minimum stock levels.'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('stock_inventory')
+                .where('businessId', isEqualTo: widget.businessId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              // Filter low stock items
+              final lowStockItems = snapshot.data!.docs.where((doc) {
+                try {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final currentStock = ItemMaster.getDoubleValue(data, 'currentStock');
+                  final minStock = ItemMaster.getDoubleValue(data, 'minimumStockLevel');
+                  return currentStock <= minStock;
+                } catch (e) {
+                  debugPrint('Error filtering low stock item: $e'); // Debug print
+                  return false;
+                }
+              }).toList();
+
+              if (lowStockItems.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.check_circle, size: 64, color: Colors.green),
+                      SizedBox(height: 16),
+                      Text(
+                        'All items are well stocked!',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.green,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                itemCount: lowStockItems.length,
+                itemBuilder: (context, index) {
+                  final doc = lowStockItems[index];
+                  final data = doc.data() as Map<String, dynamic>;
+                  final itemId = ItemMaster.getStringValue(data, 'itemId');
+                  final location = ItemMaster.getStringValue(data, 'location');
+                  final currentStock = ItemMaster.getDoubleValue(data, 'currentStock');
+                  final minStock = ItemMaster.getDoubleValue(data, 'minimumStockLevel');
+
+                  return FutureBuilder<DocumentSnapshot>(
+                    future: _firestore.collection('items').doc(itemId).get(),
+                    builder: (context, itemSnapshot) {
+                      String itemName = 'Unknown Item';
+                      if (itemSnapshot.hasData && itemSnapshot.data!.exists) {
+                        try {
+                          final item = ItemMaster.fromFirestore(itemSnapshot.data!);
+                          itemName = item.description.isNotEmpty ? item.description : 'Unnamed Item';
+                        } catch (e) {
+                          debugPrint('Error loading item for low stock report: $e'); // Debug print
+                          itemName = 'Error loading item';
+                        }
+                      }
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        color: Colors.orange.shade50,
+                        child: ListTile(
+                          leading: const Icon(
+                            Icons.warning,
+                            color: Colors.orange,
+                          ),
+                          title: Text(itemName),
+                          subtitle: Text('Location: $location'),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Text(
+                                'Stock: ${currentStock.toStringAsFixed(1)}',
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.orange,
+                                ),
+                              ),
+                              Text(
+                                'Min: ${minStock.toStringAsFixed(1)}',
+                                style: const TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    },
+                  );
+                },
+              );
+            },
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1785,18 +2462,12 @@ class ReportsTab extends StatelessWidget {
     );
   }
 
-  void _showStockMovementReport(BuildContext context) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Stock Movement Report'),
-        content: const Text('This feature will track all stock movements including purchases, sales, and transfers.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
+  // NEW: Function to show the Sales by HSN Report Screen
+  void _showSalesByHsnReport(BuildContext context) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => SalesByHsnReportScreen(businessId: widget.businessId),
       ),
     );
   }
@@ -1805,8 +2476,98 @@ class ReportsTab extends StatelessWidget {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Valuation Report'),
-        content: const Text('This feature will calculate the total value of your inventory based on cost prices and current stock levels.'),
+        title: const Text('Inventory Valuation Report'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('stock_inventory')
+                .where('businessId', isEqualTo: widget.businessId)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('No stock data available for valuation'),
+                );
+              }
+              return FutureBuilder<List<Map<String, dynamic>>>(
+                future: _calculateInventoryValuation(snapshot.data!.docs),
+                builder: (context, valuationSnapshot) {
+                  if (!valuationSnapshot.hasData) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+                  final valuationData = valuationSnapshot.data!;
+                  double totalValue = 0;
+                  for (var item in valuationData) {
+                    totalValue += item['totalValue'] as double;
+                  }
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: Colors.purple.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              'Total Inventory Value:',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Text(
+                              '₹${totalValue.toStringAsFixed(2)}',
+                              style: const TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                                color: Colors.purple,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Expanded(
+                        child: ListView.builder(
+                          itemCount: valuationData.length,
+                          itemBuilder: (context, index) {
+                            final item = valuationData[index];
+                            return Card(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              child: ListTile(
+                                leading: const Icon(Icons.account_balance, color: Colors.purple),
+                                title: Text(item['itemName']),
+                                subtitle: Text(
+                                  'Stock: ${item['stock']} × ₹${item['costPrice'].toStringAsFixed(2)}',
+                                ),
+                                trailing: Text(
+                                  '₹${item['totalValue'].toStringAsFixed(2)}',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.purple,
+                                  ),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              );
+            },
+          ),
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
@@ -1814,6 +2575,255 @@ class ReportsTab extends StatelessWidget {
           ),
         ],
       ),
+    );
+  }
+
+  void _showProfitAnalysisReport(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Profit Analysis Report'),
+        content: SizedBox(
+          width: double.maxFinite,
+          height: 400,
+          child: StreamBuilder<QuerySnapshot>(
+            stream: _firestore
+                .collection('items')
+                .where('businessId', isEqualTo: widget.businessId)
+                .where('isActive', isEqualTo: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Center(
+                  child: Text('No items available for profit analysis'),
+                );
+              }
+              final items = snapshot.data!.docs.map((doc) {
+                try {
+                  return ItemMaster.fromFirestore(doc);
+                } catch (e) {
+                  debugPrint('Error parsing item for profit analysis: $e'); // Debug print
+                  return null;
+                }
+              }).where((item) => item != null).cast<ItemMaster>().toList();
+
+              // Sort by profit margin (descending)
+              items.sort((a, b) => b.profitMargin.compareTo(a.profitMargin));
+
+              return ListView.builder(
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final item = items[index];
+                  final profitPerUnit = item.sellingPrice - item.costPrice;
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    child: ListTile(
+                      leading: Icon(
+                        Icons.show_chart,
+                        color: item.profitMargin > 20 ? Colors.green :
+                        item.profitMargin > 10 ? Colors.orange : Colors.red,
+                      ),
+                      title: Text(item.description.isNotEmpty ? item.description : 'Unnamed Item'),
+                      subtitle: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Cost: ₹${item.costPrice.toStringAsFixed(2)} | Selling: ₹${item.sellingPrice.toStringAsFixed(2)}'),
+                          Text('Profit per unit: ₹${profitPerUnit.toStringAsFixed(2)}'),
+                        ],
+                      ),
+                      trailing: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: item.profitMargin > 20 ? Colors.green.withOpacity(0.1) :
+                          item.profitMargin > 10 ? Colors.orange.withOpacity(0.1) : Colors.red.withOpacity(0.1),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          '${item.profitMargin.toStringAsFixed(1)}%',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: item.profitMargin > 20 ? Colors.green :
+                            item.profitMargin > 10 ? Colors.orange : Colors.red,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> _calculateInventoryValuation(List<QueryDocumentSnapshot> stockDocs) async {
+    List<Map<String, dynamic>> valuationData = [];
+    for (var doc in stockDocs) {
+      try {
+        final data = doc.data() as Map<String, dynamic>;
+        final itemId = ItemMaster.getStringValue(data, 'itemId');
+        final currentStock = ItemMaster.getDoubleValue(data, 'currentStock');
+
+        // Get item details
+        final itemDoc = await _firestore.collection('items').doc(itemId).get();
+        if (itemDoc.exists) {
+          final item = ItemMaster.fromFirestore(itemDoc);
+          final totalValue = currentStock * item.costPrice;
+          valuationData.add({
+            'itemName': item.description.isNotEmpty ? item.description : 'Unnamed Item',
+            'stock': currentStock,
+            'costPrice': item.costPrice,
+            'totalValue': totalValue,
+          });
+        }
+      } catch (e) {
+        // Handle individual item errors
+        debugPrint('Error calculating valuation for item: $e'); // Debug print
+      }
+    }
+    return valuationData;
+  }
+}
+
+class GenerateStockReportButton extends StatefulWidget {
+  final String businessId;
+
+  const GenerateStockReportButton({Key? key, required this.businessId}) : super(key: key);
+
+  @override
+  State<GenerateStockReportButton> createState() => _GenerateStockReportButtonState();
+}
+
+class _GenerateStockReportButtonState extends State<GenerateStockReportButton> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  @override
+  Widget build(BuildContext context) {
+    return Align(
+      alignment: Alignment.bottomRight,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: FloatingActionButton.extended(
+          heroTag: 'generate_stock_report',
+          label: const Text('Generate All Stock Report'),
+          icon: const Icon(Icons.document_scanner),
+          backgroundColor: Colors.blue,
+          onPressed: () async {
+            try {
+              final stockSnapshot = await _firestore
+                  .collection('stock_inventory')
+                  .where('businessId', isEqualTo: widget.businessId)
+                  .get();
+              final stocks = stockSnapshot.docs
+                  .map((doc) => StockInventory.fromFirestore(doc))
+                  .toList();
+
+              final itemSnapshot = await _firestore
+                  .collection('items')
+                  .where('businessId', isEqualTo: widget.businessId)
+                  .where('isActive', isEqualTo: true)
+                  .get();
+              final items = itemSnapshot.docs
+                  .map((doc) => ItemMaster.fromFirestore(doc))
+                  .toList();
+
+              if (stocks.isEmpty) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('No stock data to export.'), backgroundColor: Colors.orange),
+                  );
+                }
+                return;
+              }
+              // Show options to download, share, or print
+              showModalBottomSheet(
+                context: context,
+                builder: (BuildContext bc) {
+                  return SafeArea(
+                    child: Wrap(
+                      children: <Widget>[
+                        ListTile(
+                          leading: const Icon(Icons.download),
+                          title: const Text('Download PDF'),
+                          onTap: () async {
+                            Navigator.pop(bc);
+                            await PDFUtils.generateAndDownloadAllStockPDF(stocks, items);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('All Stock Report PDF downloaded!'), backgroundColor: Colors.green),
+                              );
+                            }
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.share),
+                          title: const Text('Share PDF'),
+                          onTap: () async {
+                            Navigator.pop(bc);
+                            await PDFUtils.shareAllStockPDF(stocks, items);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('All Stock Report PDF shared!'), backgroundColor: Colors.green),
+                              );
+                            }
+                          },
+                        ),
+                        ListTile(
+                          leading: const Icon(Icons.print),
+                          title: const Text('Print PDF'),
+                          onTap: () async {
+                            Navigator.pop(bc);
+                            await PDFUtils.printAllStockPDF(stocks, items);
+                            if (mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(content: Text('All Stock Report PDF sent to printer!'), backgroundColor: Colors.green),
+                              );
+                            }
+                          },
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              );
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error generating stock report: $e'), backgroundColor: Colors.red),
+                );
+              }
+              debugPrint('Error generating all stock report: $e');
+            }
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class StockTabWithReportButton extends StatelessWidget {
+  final String businessId;
+
+  const StockTabWithReportButton({Key? key, required this.businessId}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        StockTab(businessId: businessId),
+        GenerateStockReportButton(businessId: businessId),
+      ],
     );
   }
 }
