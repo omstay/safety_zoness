@@ -35,11 +35,15 @@ android {
 }
 
 dependencies {
+    implementation(platform("com.google.firebase:firebase-bom:33.6.0"))
     implementation("com.google.firebase:firebase-analytics")
-    implementation(platform("com.google.firebase:firebase-bom:33.6.0"))  // Updated BOM version
     implementation("com.google.firebase:firebase-messaging:23.4.0")
     implementation("androidx.work:work-runtime:2.9.0")
+
+    // Required for flutter_local_notifications
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 }
+
 
 flutter {
     source = "../.."
