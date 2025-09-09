@@ -8,6 +8,7 @@ import 'package:safetyzoness/screens/dashbord.dart';
 import 'package:safetyzoness/screens/inventory_management.dart';
 import 'package:safetyzoness/screens/part_management_screen.dart';
 import 'package:safetyzoness/screens/party_screen.dart';
+import 'package:safetyzoness/services/fcm_service.dart';
 
 import 'package:safetyzoness/services/firebase_options.dart';
 import 'screens/subscription_screen.dart';
@@ -15,13 +16,15 @@ import 'screens/subscription_screen.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Check if Firebase is already initialized
   try {
+    // ✅ Initialize Firebase FIRST
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+
+    // ✅ Then setup your FCM service
+    await FCMService.initialize();
   } catch (e) {
-    // Firebase is already initialized, continue
     if (e.toString().contains('duplicate-app')) {
       print('Firebase already initialized');
     } else {
@@ -80,7 +83,8 @@ class AuthWrapper extends StatelessWidget {
         }
 
         if (snapshot.hasData) {
-          // User is signed in
+          // User is signed in - refresh FCM token
+          FCMService.getToken();
           return const MainScreen();
         } else {
           // User is not signed in
@@ -91,6 +95,82 @@ class AuthWrapper extends StatelessWidget {
   }
 }
 
+class FCMTokenDisplay extends StatefulWidget {
+  const FCMTokenDisplay({super.key});
+
+  @override
+  State<FCMTokenDisplay> createState() => _FCMTokenDisplayState();
+}
+
+class _FCMTokenDisplayState extends State<FCMTokenDisplay> {
+  String? _token;
+
+  @override
+  void initState() {
+    super.initState();
+    _getToken();
+  }
+
+  Future<void> _getToken() async {
+    String? token = await FCMService.getToken();
+    setState(() {
+      _token = token;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.all(16),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'FCM Token:',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: SelectableText(
+                _token ?? 'Loading...',
+                style: const TextStyle(fontSize: 12),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                ElevatedButton(
+                  onPressed: _getToken,
+                  child: const Text('Refresh Token'),
+                ),
+                const SizedBox(width: 8),
+                ElevatedButton(
+                  onPressed: () async {
+                    await FCMService.subscribeToTopic('all_users');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Subscribed to all_users topic')),
+                    );
+                  },
+                  child: const Text('Subscribe to Topic'),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 

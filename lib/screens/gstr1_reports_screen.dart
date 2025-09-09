@@ -235,7 +235,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showB2BReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => GSTR1SectionScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         sectionTitle: 'B2B Supplies',
         sectionFilter: 'B2B',
         fromDate: _fromDate,
@@ -247,7 +247,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showB2CLargeReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => GSTR1SectionScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         sectionTitle: 'B2C Large Supplies',
         sectionFilter: 'B2C_LARGE',
         fromDate: _fromDate,
@@ -259,7 +259,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showB2CSmallReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => GSTR1SectionScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         sectionTitle: 'B2C Small Supplies',
         sectionFilter: 'B2C_SMALL',
         fromDate: _fromDate,
@@ -271,7 +271,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showExportsReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => GSTR1SectionScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         sectionTitle: 'Export Supplies',
         sectionFilter: 'EXPORT',
         fromDate: _fromDate,
@@ -283,7 +283,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showNilRatedReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => NilRatedSuppliesScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         fromDate: _fromDate,
         toDate: _toDate,
       ),
@@ -293,7 +293,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showHSNSummaryReport() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => HSNSummaryScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         fromDate: _fromDate,
         toDate: _toDate,
       ),
@@ -303,7 +303,7 @@ class _GSTR1ReportsScreenState extends State<GSTR1ReportsScreen> {
   void _showDocumentsSummary() {
     Navigator.push(context, MaterialPageRoute(
       builder: (_) => DocumentsSummaryScreen(
-        businessId: widget.businessId,
+        userId: widget.businessId,
         fromDate: _fromDate,
         toDate: _toDate,
       ),

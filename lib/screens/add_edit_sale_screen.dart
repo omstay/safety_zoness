@@ -1,19 +1,21 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import '../model/SaleMaster.dart'; // Import the updated SaleMaster and SaleItem
-import 'inventory_management.dart'; // To access ItemMaster and its static helpers
-import 'package:flutter/foundation.dart'; // Import for debugPrint
+import '../model/SaleMaster.dart';
+import 'inventory_management.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
-/// A screen for adding a new sale or editing an existing one.
+/// A screen for adding a new sale or editing an existing one with invoice format.
 class AddEditSaleScreen extends StatefulWidget {
-  final String businessId;
-  final String? saleId; // Null for new sale, ID for editing
-  final DocumentSnapshot? saleDoc; // Optional: pass doc directly for editing
+  final String userId;
+  final String? saleId;
+  final DocumentSnapshot? saleDoc;
 
   const AddEditSaleScreen({
     super.key,
-    required this.businessId,
+    required this.userId,
     this.saleId,
     this.saleDoc,
   });
@@ -26,20 +28,50 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final _formKey = GlobalKey<FormState>();
 
-  // Existing controllers
+  // Basic controllers
   final TextEditingController _customerNameController = TextEditingController();
   final TextEditingController _invoiceController = TextEditingController();
+  final TextEditingController _termsController = TextEditingController(text: 'Net 30');
   DateTime _selectedDate = DateTime.now();
-  List<SaleItem> _saleItems = []; // List to hold items in the current sale
+  DateTime _dueDate = DateTime.now().add(Duration(days: 30));
+  List<SaleItem> _saleItems = [];
   double _totalSaleAmount = 0.0;
   bool _isLoading = false;
 
-  // NEW GST CONTROLLERS
+  // Customer Address controllers
+  final TextEditingController _customerAddressLine1Controller = TextEditingController();
+  final TextEditingController _customerAddressLine2Controller = TextEditingController();
+  final TextEditingController _customerCityController = TextEditingController();
+  final TextEditingController _customerStateController = TextEditingController();
+  final TextEditingController _customerPincodeController = TextEditingController();
+
+  // Shipping Address controllers (Bill To / Ship To)
+  final TextEditingController _shippingAddressLine1Controller = TextEditingController();
+  final TextEditingController _shippingAddressLine2Controller = TextEditingController();
+  final TextEditingController _shippingCityController = TextEditingController();
+  final TextEditingController _shippingStateController = TextEditingController();
+  final TextEditingController _shippingPincodeController = TextEditingController();
+  bool _sameAsBilling = true;
+
+  // Business/Company Info (from AuthService)
+  String _businessName = '';
+  String _businessAddress = '';
+  String _businessGSTIN = '';
+  String _businessPhone = '';
+  String _businessEmail = '';
+
+  // Bank Details (from AuthService)
+  String _bankName = '';
+  String _accountNumber = '';
+  String _ifscCode = '';
+  String _accountHolderName = '';
+
+  // GST controllers
   final TextEditingController _recipientGSTINController = TextEditingController();
   final TextEditingController _eWayBillController = TextEditingController();
   final TextEditingController _distanceController = TextEditingController();
 
-  // NEW GST DROPDOWNS
+  // GST dropdowns
   String _selectedPlaceOfSupply = '';
   String _selectedSupplyType = 'INTRA';
   String _selectedSaleType = 'CASH';
@@ -92,12 +124,40 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   @override
   void initState() {
     super.initState();
+    _loadBusinessData();
     if (widget.saleId != null && widget.saleId!.isNotEmpty) {
-      _loadSaleData(); // Load data if editing an existing sale
+      _loadSaleData();
     }
   }
 
-  /// Loads existing sale data for editing.
+  /// Load business data from user profile
+  Future<void> _loadBusinessData() async {
+    try {
+      final userId = FirebaseAuth.instance.currentUser?.uid;
+      if (userId != null) {
+        final userDoc = await _firestore.collection('users').doc(userId).get();
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          setState(() {
+            _businessName = userData['businessName'] ?? '';
+            _businessPhone = userData['phone'] ?? '';
+            _businessEmail = userData['email'] ?? '';
+            _bankName = userData['bankName'] ?? '';
+            _accountNumber = userData['accountNumber'] ?? '';
+            _ifscCode = userData['ifscCode'] ?? '';
+            _accountHolderName = userData['accountHolderName'] ?? '';
+            // You might want to add business address and GSTIN fields to user model
+            _businessAddress = '${userData['businessAddress'] ?? 'Your Business Address'}';
+            _businessGSTIN = userData['gstin'] ?? 'YOUR_GSTIN_HERE';
+          });
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading business data: $e');
+    }
+  }
+
+  /// Load existing sale data for editing
   Future<void> _loadSaleData() async {
     setState(() => _isLoading = true);
     try {
@@ -113,7 +173,10 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         _customerNameController.text = sale.customerName;
         _invoiceController.text = sale.invoice;
         _selectedDate = sale.date;
-        _saleItems = List.from(sale.items); // Create a mutable copy of items
+        _saleItems = List.from(sale.items);
+
+        // Load customer address if available (you'd need to add these fields to SaleMaster)
+        // For now, using placeholder logic
 
         // Load GST fields
         _recipientGSTINController.text = sale.recipientGSTIN ?? '';
@@ -126,10 +189,8 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         _selectedTransportMode = sale.transportMode ?? 'Road';
         _distanceController.text = sale.distance?.toString() ?? '';
 
-        _calculateOverallTotal(); // Recalculate total based on loaded items
-        debugPrint('Sale data loaded for ID: ${widget.saleId}'); // Debug print
-      } else {
-        debugPrint('Sale document not found for ID: ${widget.saleId}'); // Debug print
+        _calculateOverallTotal();
+        debugPrint('Sale data loaded for ID: ${widget.saleId}');
       }
     } catch (e) {
       if (mounted) {
@@ -137,7 +198,6 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           SnackBar(content: Text('Error loading sale: $e'), backgroundColor: Colors.red),
         );
       }
-      debugPrint('Error loading sale: $e'); // Debug print
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -145,22 +205,527 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     }
   }
 
-  /// GST validation method
-  String? _validateGSTIN(String? value) {
-    if (value == null || value.trim().isEmpty) return null; // Optional field
-
-    final gstin = value.trim().toUpperCase();
-    if (gstin.length != 15) {
-      return 'GSTIN must be 15 characters';
+  /// Calculate overall total
+  void _calculateOverallTotal() {
+    double total = 0.0;
+    for (var item in _saleItems) {
+      total += item.itemTotal;
     }
+    setState(() {
+      _totalSaleAmount = total;
+    });
+  }
 
-    // Basic GSTIN format validation
-    final gstinRegex = RegExp(r'^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[Z]{1}[0-9A-Z]{1}$');
-    if (!gstinRegex.hasMatch(gstin)) {
-      return 'Invalid GSTIN format';
+  /// Date picker
+  Future<void> _selectDate(BuildContext context, bool isInvoiceDate) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: isInvoiceDate ? _selectedDate : _dueDate,
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
+    );
+    if (picked != null) {
+      setState(() {
+        if (isInvoiceDate) {
+          _selectedDate = picked;
+        } else {
+          _dueDate = picked;
+        }
+      });
     }
+  }
 
-    return null;
+  /// Build invoice header section
+  Widget _buildInvoiceHeader() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade50,
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          // Business Info and Tax Invoice Header
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Business Details (Left Side)
+              Expanded(
+                flex: 2,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _businessName.isNotEmpty ? _businessName : 'Your Business Name',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      _businessAddress,
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    ),
+                    Text(
+                      'GSTIN: $_businessGSTIN',
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    ),
+                    Text(
+                      _businessPhone,
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    ),
+                    Text(
+                      _businessEmail,
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+
+              // Tax Invoice Title (Right Side)
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade400),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: const Text(
+                  'TAX INVOICE',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Invoice Details Row
+          Row(
+            children: [
+              // Left Column - Invoice Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailRow('Invoice #', _invoiceController.text.isEmpty ? 'INV-001' : _invoiceController.text),
+                    _buildDetailRow('Invoice Date', DateFormat('dd/MM/yyyy').format(_selectedDate)),
+                    _buildDetailRow('Terms', _termsController.text),
+                    _buildDetailRow('Due Date', DateFormat('dd/MM/yyyy').format(_dueDate)),
+                  ],
+                ),
+              ),
+
+              // Right Column - Place of Supply
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildDetailRow('Place of Supply',
+                        _selectedPlaceOfSupply.isNotEmpty
+                            ? '${_stateCodes.firstWhere((state) => state['code'] == _selectedPlaceOfSupply, orElse: () => {'name': 'Select State'})['name']} ($_selectedPlaceOfSupply)'
+                            : 'Select Place of Supply'
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 80,
+            child: Text(
+              '$label:',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade700,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build Bill To / Ship To section
+  Widget _buildAddressSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Customer & Shipping Details',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Bill To Section
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Bill To',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Customer Name
+                    TextFormField(
+                      controller: _customerNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Customer Name *',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      validator: (value) => value?.trim().isEmpty == true ? 'Required' : null,
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Customer GSTIN
+                    TextFormField(
+                      controller: _recipientGSTINController,
+                      decoration: const InputDecoration(
+                        labelText: 'GSTIN (Optional)',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                      textCapitalization: TextCapitalization.characters,
+                      maxLength: 15,
+                      onChanged: (value) => _updateSupplyType(),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Customer Address
+                    TextFormField(
+                      controller: _customerAddressLine1Controller,
+                      decoration: const InputDecoration(
+                        labelText: 'Address Line 1',
+                        border: OutlineInputBorder(),
+                        isDense: true,
+                        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _customerCityController,
+                            decoration: const InputDecoration(
+                              labelText: 'City',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _customerStateController,
+                            decoration: const InputDecoration(
+                              labelText: 'State',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+
+              const SizedBox(width: 16),
+
+              // Ship To Section
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade100,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: const Text(
+                        'Ship To',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Same as Billing Checkbox
+                    CheckboxListTile(
+                      title: const Text('Same as Bill To', style: TextStyle(fontSize: 13)),
+                      value: _sameAsBilling,
+                      onChanged: (value) {
+                        setState(() {
+                          _sameAsBilling = value ?? false;
+                          if (_sameAsBilling) {
+                            _shippingAddressLine1Controller.text = _customerAddressLine1Controller.text;
+                            _shippingCityController.text = _customerCityController.text;
+                            _shippingStateController.text = _customerStateController.text;
+                          }
+                        });
+                      },
+                      contentPadding: EdgeInsets.zero,
+                      dense: true,
+                    ),
+
+                    if (!_sameAsBilling) ...[
+                      TextFormField(
+                        controller: _shippingAddressLine1Controller,
+                        decoration: const InputDecoration(
+                          labelText: 'Shipping Address',
+                          border: OutlineInputBorder(),
+                          isDense: true,
+                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: TextFormField(
+                              controller: _shippingCityController,
+                              decoration: const InputDecoration(
+                                labelText: 'City',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextFormField(
+                              controller: _shippingStateController,
+                              decoration: const InputDecoration(
+                                labelText: 'State',
+                                border: OutlineInputBorder(),
+                                isDense: true,
+                                contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.grey.shade300),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(_customerAddressLine1Controller.text.isEmpty ? 'Same as billing address' : _customerAddressLine1Controller.text),
+                            if (_customerCityController.text.isNotEmpty || _customerStateController.text.isNotEmpty)
+                              Text('${_customerCityController.text}, ${_customerStateController.text}'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build GST and other details
+  Widget _buildGSTDetails() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'GST & Other Details',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+
+          Row(
+            children: [
+              // Place of Supply
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedPlaceOfSupply.isEmpty ? null : _selectedPlaceOfSupply,
+                  decoration: const InputDecoration(
+                    labelText: 'Place of Supply *',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: _stateCodes.map((state) {
+                    return DropdownMenuItem<String>(
+                      value: state['code'],
+                      child: Text('${state['code']} - ${state['name']}', style: const TextStyle(fontSize: 12)),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedPlaceOfSupply = value ?? '';
+                    });
+                    _updateSupplyType();
+                  },
+                  validator: (value) => value == null ? 'Required' : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+
+              // Supply Type
+              Expanded(
+                child: DropdownButtonFormField<String>(
+                  value: _selectedSupplyType,
+                  decoration: const InputDecoration(
+                    labelText: 'Supply Type',
+                    border: OutlineInputBorder(),
+                    isDense: true,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'INTRA', child: Text('Intra State')),
+                    DropdownMenuItem(value: 'INTER', child: Text('Inter State')),
+                  ],
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedSupplyType = value ?? 'INTRA';
+                    });
+                    _updateAllItemsTaxStructure();
+                  },
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build bank details section
+  Widget _buildBankDetailsSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey.shade100,
+              borderRadius: BorderRadius.circular(4),
+            ),
+            child: const Text(
+              'Bank Details',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Bank: $_bankName', style: const TextStyle(fontSize: 12)),
+              Text('A/C No: $_accountNumber', style: const TextStyle(fontSize: 12)),
+              Text('IFSC: $_ifscCode', style: const TextStyle(fontSize: 12)),
+              const SizedBox(height: 8),
+              const Text(
+                'THANKS FOR YOUR BUSINESS.',
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Build signature section
+  Widget _buildSignatureSection() {
+    return Container(
+      height: 80,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        border: Border.all(color: Colors.grey.shade300),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Spacer(),
+          Container(
+            width: 200,
+            height: 1,
+            color: Colors.grey.shade400,
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Authorized Signature',
+            style: TextStyle(fontSize: 12, color: Colors.grey),
+          ),
+        ],
+      ),
+    );
   }
 
   /// Auto-determine supply type based on GSTIN
@@ -173,7 +738,6 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         _selectedSupplyType = (recipientStateCode == posStateCode) ? 'INTRA' : 'INTER';
       });
 
-      // Auto-update tax structure for all items
       _updateAllItemsTaxStructure();
     }
   }
@@ -219,67 +783,351 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     _calculateOverallTotal();
   }
 
-  /// Calculates the total amount of the sale based on all added items.
-  void _calculateOverallTotal() {
-    double total = 0.0;
-    for (var item in _saleItems) {
-      total += item.itemTotal;
-    }
-    setState(() {
-      _totalSaleAmount = total;
-    });
-  }
+  // Include the existing methods for item management and saving
+  // (keeping _addItemToSale, _calculateAndAddSaleItem, _removeItemFromSale, _saveSale methods from original code)
 
-  /// Opens a date picker to select the sale date.
-  Future<void> _selectDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _selectedDate,
-      firstDate: DateTime(2000),
-      lastDate: DateTime(2101),
-      builder: (context, child) {
-        return Theme(
-          data: ThemeData.light().copyWith(
-            colorScheme: const ColorScheme.light(
-              primary: Color(0xFF667eea), // Header background color
-              onPrimary: Colors.white, // Header text color
-              surface: Colors.white, // Dialog background color
-              onSurface: Colors.black87, // Text color
-            ),
-            textButtonTheme: TextButtonThemeData(
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF667eea), // Button text color
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.saleId != null ? 'Edit Sale' : 'New Sale'),
+        backgroundColor: const Color(0xFF667eea),
+        foregroundColor: Colors.white,
+      ),
+      body: _isLoading && widget.saleId != null
+          ? const Center(child: CircularProgressIndicator())
+          : Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Invoice Header
+                    _buildInvoiceHeader(),
+                    const SizedBox(height: 16),
+
+                    // Basic Invoice Fields
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextFormField(
+                            controller: _invoiceController,
+                            decoration: const InputDecoration(
+                              labelText: 'Invoice Number',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                            validator: (value) => value?.trim().isEmpty == true ? 'Required' : null,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: TextFormField(
+                            controller: _termsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Terms',
+                              border: OutlineInputBorder(),
+                              isDense: true,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _selectDate(context, true),
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                decoration: InputDecoration(
+                                  labelText: 'Invoice Date',
+                                  border: const OutlineInputBorder(),
+                                  suffixIcon: const Icon(Icons.calendar_today),
+                                  isDense: true,
+                                ),
+                                controller: TextEditingController(
+                                  text: DateFormat('dd/MM/yyyy').format(_selectedDate),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: () => _selectDate(context, false),
+                            child: AbsorbPointer(
+                              child: TextFormField(
+                                decoration: InputDecoration(
+                                  labelText: 'Due Date',
+                                  border: const OutlineInputBorder(),
+                                  suffixIcon: const Icon(Icons.calendar_today),
+                                  isDense: true,
+                                ),
+                                controller: TextEditingController(
+                                  text: DateFormat('dd/MM/yyyy').format(_dueDate),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Customer & Shipping Address
+                    _buildAddressSection(),
+                    const SizedBox(height: 16),
+
+                    // GST Details
+                    _buildGSTDetails(),
+                    const SizedBox(height: 16),
+
+                    // Items Section
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Items',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _addItemToSale,
+                          icon: const Icon(Icons.add),
+                          label: const Text('Add Item'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF4CAF50),
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Items Table
+                    _saleItems.isEmpty
+                        ? Container(
+                      padding: const EdgeInsets.all(32),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'No items added yet. Click "Add Item" to start.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                    )
+                        : Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: DataTable(
+                          columnSpacing: 12,
+                          horizontalMargin: 12,
+                          columns: [
+                            DataColumn(label: Text('Sr', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('Item & Description', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('Rate', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('CGST', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('SGST', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('Amount', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                            DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+                          ],
+                          rows: List<DataRow>.generate(
+                            _saleItems.length,
+                                (index) {
+                              final item = _saleItems[index];
+                              return DataRow(
+                                cells: [
+                                  DataCell(Text((index + 1).toString(), style: const TextStyle(fontSize: 11))),
+                                  DataCell(
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(item.description, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                                        Text('HSN: ${item.hsnSacCode}', style: TextStyle(fontSize: 10, color: Colors.grey.shade600)),
+                                      ],
+                                    ),
+                                  ),
+                                  DataCell(Text('${item.quantity.toStringAsFixed(1)} ${item.unitOfMeasurement}', style: const TextStyle(fontSize: 11))),
+                                  DataCell(Text('₹${item.sellingPricePerUnit.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11))),
+                                  DataCell(Text('${item.cgstRate.toStringAsFixed(1)}%\n₹${item.centralTaxAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10))),
+                                  DataCell(Text('${item.sgstRate.toStringAsFixed(1)}%\n₹${item.stateTaxAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 10))),
+                                  DataCell(Text('₹${item.itemTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
+                                  DataCell(
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        IconButton(
+                                          icon: const Icon(Icons.edit, size: 18, color: Colors.orange),
+                                          onPressed: () => _addItemToSale(existingItem: item, index: index),
+                                        ),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete, size: 18, color: Colors.red),
+                                          onPressed: () => _removeItemFromSale(index),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              );
+                            },
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Total Section
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade50,
+                        border: Border.all(color: Colors.grey.shade300),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Sub Total:', style: TextStyle(fontSize: 14)),
+                              Text('₹${(_totalSaleAmount - _calculateTotalTax()).toStringAsFixed(2)}', style: const TextStyle(fontSize: 14)),
+                            ],
+                          ),
+                          if (_selectedSupplyType == 'INTRA') ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('CGST:', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                Text('₹${_calculateCGST().toStringAsFixed(2)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                              ],
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('SGST:', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                Text('₹${_calculateSGST().toStringAsFixed(2)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                              ],
+                            ),
+                          ] else ...[
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text('IGST:', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                                Text('₹${_calculateIGST().toStringAsFixed(2)}', style: TextStyle(fontSize: 12, color: Colors.grey.shade700)),
+                              ],
+                            ),
+                          ],
+                          const Divider(),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Total:', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                              Text('₹${_totalSaleAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF667eea))),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Bank Details
+                    _buildBankDetailsSection(),
+                    const SizedBox(height: 16),
+
+                    // Signature Section
+                    _buildSignatureSection(),
+                  ],
+                ),
               ),
             ),
-          ),
-          child: child!,
-        );
-      },
+
+            // Save Button
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _isLoading ? null : _saveSale,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF667eea),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                    width: 24,
+                    height: 24,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                    ),
+                  )
+                      : Text(
+                    widget.saleId != null ? 'Update Sale' : 'Save Sale',
+                    style: const TextStyle(fontSize: 18),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
-    if (picked != null && picked != _selectedDate) {
-      setState(() {
-        _selectedDate = picked;
-      });
-    }
   }
 
-  /// Shows a dialog to add a new item or edit an existing item in the sale.
+  // Tax calculation helper methods
+  double _calculateTotalTax() {
+    return _saleItems.fold(0.0, (sum, item) =>
+    sum + item.centralTaxAmount + item.stateTaxAmount + item.integratedTaxAmount + item.cessAmount);
+  }
+
+  double _calculateCGST() {
+    return _saleItems.fold(0.0, (sum, item) => sum + item.centralTaxAmount);
+  }
+
+  double _calculateSGST() {
+    return _saleItems.fold(0.0, (sum, item) => sum + item.stateTaxAmount);
+  }
+
+  double _calculateIGST() {
+    return _saleItems.fold(0.0, (sum, item) => sum + item.integratedTaxAmount);
+  }
+
+  // Add the missing methods from the original file
   Future<void> _addItemToSale({SaleItem? existingItem, int? index}) async {
     String? selectedItemId;
     TextEditingController quantityController = TextEditingController(text: existingItem?.quantity.toString() ?? '1.0');
     ItemMaster? selectedItemMaster;
-    final _itemDialogFormKey = GlobalKey<FormState>(); // New form key for item dialog
+    final _itemDialogFormKey = GlobalKey<FormState>();
 
     if (existingItem != null) {
       selectedItemId = existingItem.itemId;
-      // Fetch the ItemMaster for the existing item to pre-populate details
       try {
         final itemDoc = await _firestore.collection('items').doc(selectedItemId).get();
         if (itemDoc.exists) {
           selectedItemMaster = ItemMaster.fromFirestore(itemDoc);
         }
       } catch (e) {
-        debugPrint('Error fetching existing item master: $e'); // Debug print
+        debugPrint('Error fetching existing item master: $e');
       }
     }
 
@@ -290,20 +1138,20 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           builder: (context, setStateSB) {
             return AlertDialog(
               title: Text(existingItem == null ? 'Add Item to Sale' : 'Edit Sale Item'),
-              content: Form( // Wrap content in a Form
+              content: Form(
                 key: _itemDialogFormKey,
                 child: SingleChildScrollView(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       FutureBuilder<QuerySnapshot>(
-                        future: _firestore.collection('items').where('businessId', isEqualTo: widget.businessId).where('isActive', isEqualTo: true).get(),
+                        future: _firestore.collection('items').where('userId', isEqualTo: widget.userId).where('isActive', isEqualTo: true).get(),
                         builder: (context, snapshot) {
                           if (snapshot.connectionState == ConnectionState.waiting) {
                             return const CircularProgressIndicator();
                           }
                           if (snapshot.hasError) {
-                            debugPrint('Add Item Dialog: Error loading items: ${snapshot.error}'); // Debug print
+                            debugPrint('Add Item Dialog: Error loading items: ${snapshot.error}');
                             return Text('Error loading items: ${snapshot.error}');
                           }
                           final items = snapshot.data!.docs
@@ -394,14 +1242,14 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
                 ),
                 ElevatedButton(
                   onPressed: () {
-                    if (_itemDialogFormKey.currentState!.validate()) { // Validate before adding/updating
+                    if (_itemDialogFormKey.currentState!.validate()) {
                       if (selectedItemId != null && quantityController.text.isNotEmpty) {
                         final quantity = double.parse(quantityController.text);
                         _calculateAndAddSaleItem(selectedItemId!, quantity, existingItem, index);
                         Navigator.of(context).pop();
                       }
                     } else {
-                      debugPrint('Add/Edit Sale Item Dialog: Form validation failed.'); // Debug print
+                      debugPrint('Add/Edit Sale Item Dialog: Form validation failed.');
                     }
                   },
                   child: Text(existingItem == null ? 'Add' : 'Update'),
@@ -414,7 +1262,6 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
     );
   }
 
-  /// Calculates taxes and total for a sale item and adds/updates it in the list.
   Future<void> _calculateAndAddSaleItem(String itemId, double quantity, SaleItem? existingItem, int? index) async {
     try {
       final itemDoc = await _firestore.collection('items').doc(itemId).get();
@@ -424,7 +1271,7 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
             const SnackBar(content: Text('Selected item not found'), backgroundColor: Colors.red),
           );
         }
-        debugPrint('Error: Selected item not found for ID: $itemId'); // Debug print
+        debugPrint('Error: Selected item not found for ID: $itemId');
         return;
       }
 
@@ -432,10 +1279,9 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
       final sellingPricePerUnit = itemMaster.sellingPrice;
       final totalTaxableValue = sellingPricePerUnit * quantity;
 
-      // Calculate tax amounts based on supply type
       final cgstAmount = _selectedSupplyType == 'INTRA'
           ? totalTaxableValue * (itemMaster.cgstRate / 100)
-          : 0.0; // <-- use 0.0 instead of 0
+          : 0.0;
 
       final sgstAmount = _selectedSupplyType == 'INTRA'
           ? totalTaxableValue * (itemMaster.sgstRate / 100)
@@ -470,16 +1316,15 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
         supplyType: _selectedSupplyType,
       );
 
-
       setState(() {
         if (existingItem != null && index != null) {
-          _saleItems[index] = newSaleItem; // Update existing item
-          debugPrint('Sale item updated: ${newSaleItem.description}'); // Debug print
+          _saleItems[index] = newSaleItem;
+          debugPrint('Sale item updated: ${newSaleItem.description}');
         } else {
-          _saleItems.add(newSaleItem); // Add new item
-          debugPrint('Sale item added: ${newSaleItem.description}'); // Debug print
+          _saleItems.add(newSaleItem);
+          debugPrint('Sale item added: ${newSaleItem.description}');
         }
-        _calculateOverallTotal(); // Recalculate total after item change
+        _calculateOverallTotal();
       });
     } catch (e) {
       if (mounted) {
@@ -487,232 +1332,22 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           SnackBar(content: Text('Error adding item: $e'), backgroundColor: Colors.red),
         );
       }
-      debugPrint('Error calculating and adding sale item: $e'); // Debug print
+      debugPrint('Error calculating and adding sale item: $e');
     }
   }
 
-  /// Removes an item from the sale.
   void _removeItemFromSale(int index) {
     final removedItemDescription = _saleItems[index].description;
     setState(() {
       _saleItems.removeAt(index);
-      _calculateOverallTotal(); // Recalculate total after item removal
+      _calculateOverallTotal();
     });
-    debugPrint('Sale item removed: $removedItemDescription'); // Debug print
+    debugPrint('Sale item removed: $removedItemDescription');
   }
 
-  /// Build GST form fields
-  Widget _buildGSTFormFields() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'GST Details',
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 16),
-
-        // Recipient GSTIN
-        TextFormField(
-          controller: _recipientGSTINController,
-          decoration: const InputDecoration(
-            labelText: 'Recipient GSTIN (Optional)',
-            hintText: 'Enter 15-digit GSTIN',
-            border: OutlineInputBorder(),
-            filled: true,
-            fillColor: Colors.white,
-          ),
-          textCapitalization: TextCapitalization.characters,
-          maxLength: 15,
-          validator: _validateGSTIN,
-          onChanged: (value) {
-            _updateSupplyType();
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // Place of Supply
-        DropdownButtonFormField<String>(
-          value: _selectedPlaceOfSupply.isEmpty ? null : _selectedPlaceOfSupply,
-          decoration: const InputDecoration(
-            labelText: 'Place of Supply (POS)',
-            border: OutlineInputBorder(),
-            filled: true,
-            fillColor: Colors.white,
-          ),
-          items: _stateCodes.map((state) {
-            return DropdownMenuItem<String>(
-              value: state['code'],
-              child: Text('${state['code']} - ${state['name']}'),
-            );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedPlaceOfSupply = value ?? '';
-            });
-            _updateSupplyType();
-          },
-          validator: (value) => value == null ? 'Please select Place of Supply' : null,
-        ),
-        const SizedBox(height: 16),
-
-        // Supply Type and Sale Type Row
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedSupplyType,
-                decoration: const InputDecoration(
-                  labelText: 'Supply Type',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'INTRA', child: Text('Intra State')),
-                  DropdownMenuItem(value: 'INTER', child: Text('Inter State')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedSupplyType = value ?? 'INTRA';
-                  });
-                  _updateAllItemsTaxStructure();
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedSaleType,
-                decoration: const InputDecoration(
-                  labelText: 'Sale Type',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'CASH', child: Text('Cash Sale')),
-                  DropdownMenuItem(value: 'CREDIT', child: Text('Credit Sale')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedSaleType = value ?? 'CASH';
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-
-        // Document Type and Reverse Charge
-        Row(
-          children: [
-            Expanded(
-              child: DropdownButtonFormField<String>(
-                value: _selectedDocumentType,
-                decoration: const InputDecoration(
-                  labelText: 'Document Type',
-                  border: OutlineInputBorder(),
-                  filled: true,
-                  fillColor: Colors.white,
-                ),
-                items: const [
-                  DropdownMenuItem(value: 'INV', child: Text('Invoice')),
-                  DropdownMenuItem(value: 'DBN', child: Text('Debit Note')),
-                  DropdownMenuItem(value: 'CDN', child: Text('Credit Note')),
-                ],
-                onChanged: (value) {
-                  setState(() {
-                    _selectedDocumentType = value ?? 'INV';
-                  });
-                },
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: CheckboxListTile(
-                title: const Text('Reverse Charge'),
-                value: _isReverseCharge,
-                onChanged: (value) {
-                  setState(() {
-                    _isReverseCharge = value ?? false;
-                  });
-                },
-                contentPadding: EdgeInsets.zero,
-                controlAffinity: ListTileControlAffinity.leading,
-              ),
-            ),
-          ],
-        ),
-
-        // E-Way Bill Section (show only for goods > 50k value)
-        if (_totalSaleAmount > 50000) ...[
-          const SizedBox(height: 16),
-          const Text(
-            'E-Way Bill Details (Required for sales > ₹50,000)',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(height: 12),
-          TextFormField(
-            controller: _eWayBillController,
-            decoration: const InputDecoration(
-              labelText: 'E-Way Bill Number',
-              border: OutlineInputBorder(),
-              filled: true,
-              fillColor: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedTransportMode,
-                  decoration: const InputDecoration(
-                    labelText: 'Transport Mode',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Road', child: Text('Road')),
-                    DropdownMenuItem(value: 'Rail', child: Text('Rail')),
-                    DropdownMenuItem(value: 'Air', child: Text('Air')),
-                    DropdownMenuItem(value: 'Ship', child: Text('Ship')),
-                  ],
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTransportMode = value ?? 'Road';
-                    });
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: TextFormField(
-                  controller: _distanceController,
-                  keyboardType: TextInputType.number,
-                  decoration: const InputDecoration(
-                    labelText: 'Distance (km)',
-                    border: OutlineInputBorder(),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-        const SizedBox(height: 24),
-      ],
-    );
-  }
-
-  /// Saves or updates the sale in Firestore.
   Future<void> _saveSale() async {
     if (!_formKey.currentState!.validate()) {
-      debugPrint('Save Sale: Form validation failed.'); // Debug print
+      debugPrint('Save Sale: Form validation failed.');
       return;
     }
     if (_saleItems.isEmpty) {
@@ -721,18 +1356,17 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           const SnackBar(
             content: Text('Please add at least one item to the sale'),
             backgroundColor: Colors.orange,
-            duration: Duration(seconds: 3), // Increased duration
+            duration: Duration(seconds: 3),
           ),
         );
       }
-      debugPrint('Save Sale: No items added to sale.'); // Debug print
+      debugPrint('Save Sale: No items added to sale.');
       return;
     }
 
     setState(() => _isLoading = true);
 
     try {
-      // Determine GSTR-1 section
       String gstr1Section = 'B2C_SMALL';
       if (_recipientGSTINController.text.trim().isNotEmpty) {
         gstr1Section = 'B2B';
@@ -741,14 +1375,13 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
       }
 
       final saleData = SaleMaster(
-        id: widget.saleId ?? '', // ID will be set by Firestore for new sales
-        businessId: widget.businessId,
+        id: widget.saleId ?? '',
+        userId: widget.userId,
         invoice: _invoiceController.text.trim(),
         customerName: _customerNameController.text.trim(),
         date: _selectedDate,
         total: _totalSaleAmount,
-        items: _saleItems, // Save the list of sale items
-        // GST FIELDS
+        items: _saleItems,
         recipientGSTIN: _recipientGSTINController.text.trim().toUpperCase(),
         placeOfSupply: _selectedPlaceOfSupply,
         supplyType: _selectedSupplyType,
@@ -763,14 +1396,14 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
 
       if (widget.saleId != null && widget.saleId!.isNotEmpty) {
         await _firestore.collection('sales').doc(widget.saleId).update(saleData);
-        debugPrint('Sale updated successfully for ID: ${widget.saleId}'); // Debug print
+        debugPrint('Sale updated successfully for ID: ${widget.saleId}');
       } else {
         final docRef = await _firestore.collection('sales').add(saleData);
-        debugPrint('Sale added successfully with ID: ${docRef.id}'); // Debug print
+        debugPrint('Sale added successfully with ID: ${docRef.id}');
       }
 
       if (mounted) {
-        Navigator.of(context).pop(); // Go back to previous screen
+        Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.saleId != null ? 'Sale updated successfully' : 'Sale added successfully'),
@@ -784,7 +1417,7 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
           SnackBar(content: Text('Error saving sale: $e'), backgroundColor: Colors.red),
         );
       }
-      debugPrint('Error saving sale: $e'); // Debug print
+      debugPrint('Error saving sale: $e');
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -796,246 +1429,20 @@ class _AddEditSaleScreenState extends State<AddEditSaleScreen> {
   void dispose() {
     _customerNameController.dispose();
     _invoiceController.dispose();
+    _termsController.dispose();
+    _customerAddressLine1Controller.dispose();
+    _customerAddressLine2Controller.dispose();
+    _customerCityController.dispose();
+    _customerStateController.dispose();
+    _customerPincodeController.dispose();
+    _shippingAddressLine1Controller.dispose();
+    _shippingAddressLine2Controller.dispose();
+    _shippingCityController.dispose();
+    _shippingStateController.dispose();
+    _shippingPincodeController.dispose();
     _recipientGSTINController.dispose();
     _eWayBillController.dispose();
     _distanceController.dispose();
     super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(widget.saleId != null ? 'Edit Sale' : 'New Sale'),
-        backgroundColor: const Color(0xFF667eea),
-        foregroundColor: Colors.white,
-      ),
-      body: _isLoading && widget.saleId != null
-          ? const Center(child: CircularProgressIndicator()) // Show loading for existing sale
-          : Form(
-        key: _formKey,
-        child: Column(
-          children: [
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    TextFormField(
-                      controller: _customerNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Customer Name',
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter customer name';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _invoiceController,
-                      decoration: const InputDecoration(
-                        labelText: 'Invoice Number',
-                        border: OutlineInputBorder(),
-                        filled: true,
-                        fillColor: Colors.white,
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Please enter invoice number';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    GestureDetector(
-                      onTap: () => _selectDate(context),
-                      child: AbsorbPointer(
-                        child: TextFormField(
-                          decoration: InputDecoration(
-                            labelText: 'Date',
-                            border: const OutlineInputBorder(),
-                            suffixIcon: const Icon(Icons.calendar_today),
-                            hintText: DateFormat('dd/MM/yyyy').format(_selectedDate),
-                            filled: true,
-                            fillColor: Colors.white,
-                          ),
-                          controller: TextEditingController(
-                            text: DateFormat('dd/MM/yyyy').format(_selectedDate),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // GST FORM FIELDS
-                    _buildGSTFormFields(),
-
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        const Text(
-                          'Items in Sale',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                        ElevatedButton.icon(
-                          onPressed: _addItemToSale,
-                          icon: const Icon(Icons.add),
-                          label: const Text('Add Item'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4CAF50),
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 16),
-                    _saleItems.isEmpty
-                        ? const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(24.0),
-                        child: Text(
-                          'No items added yet. Click "Add Item" to start.',
-                          style: TextStyle(color: Colors.grey),
-                        ),
-                      ),
-                    )
-                        : Container(
-                      decoration: BoxDecoration(
-                        border: Border.all(color: Colors.grey.shade300),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          clipBehavior: Clip.hardEdge,
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(minWidth: MediaQuery.of(context).size.width - 32),
-                            child: DataTable(
-                              columnSpacing: 12,
-                              horizontalMargin: 12,
-                              headingRowColor: MaterialStateProperty.resolveWith((states) => const Color(0xFF667eea).withOpacity(0.1)),
-                              dataRowColor: MaterialStateProperty.resolveWith((states) {
-                                if (states.contains(MaterialState.selected)) {
-                                  return Theme.of(context).colorScheme.primary.withOpacity(0.08);
-                                }
-                                return null;
-                              }),
-                              decoration: BoxDecoration(
-                                border: Border.all(color: Colors.grey.shade200),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              columns: [
-                                DataColumn(label: Text('Sr No.', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('HSN', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Description', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('UQC', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Qty', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Taxable Value (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Rate (%)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('IGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('CGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('SGST (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Cess (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                                DataColumn(label: Text('Total (₹)', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87))),
-                                DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey.shade700))),
-                              ],
-                              rows: List<DataRow>.generate(
-                                _saleItems.length,
-                                    (index) {
-                                  final item = _saleItems[index];
-                                  // Determine the applicable tax rate for display
-                                  final totalTaxRate = item.igstRate > 0 ? item.igstRate : (item.cgstRate + item.sgstRate);
-                                  return DataRow(
-                                    cells: [
-                                      DataCell(Text((index + 1).toString(), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.hsnSacCode, style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.description, style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.unitOfMeasurement, style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.quantity.toStringAsFixed(1), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.totalTaxableValue.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text('${totalTaxRate.toStringAsFixed(1)}%', style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.integratedTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.centralTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.stateTaxAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.cessAmount.toStringAsFixed(2), style: TextStyle(color: Colors.grey.shade800))),
-                                      DataCell(Text(item.itemTotal.toStringAsFixed(2), style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87))),
-                                      DataCell(
-                                        Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            IconButton(
-                                              icon: const Icon(Icons.edit, size: 20, color: Colors.orange),
-                                              onPressed: () => _addItemToSale(existingItem: item, index: index),
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.delete, size: 20, color: Colors.red),
-                                              onPressed: () => _removeItemFromSale(index),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Align(
-                      alignment: Alignment.centerRight,
-                      child: Text(
-                        'Total Sale Amount: ₹${_totalSaleAmount.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF667eea)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _isLoading ? null : _saveSale,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF667eea),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  child: _isLoading
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                    ),
-                  )
-                      : Text(
-                    widget.saleId != null ? 'Update Sale' : 'Save Sale',
-                    style: const TextStyle(fontSize: 18),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

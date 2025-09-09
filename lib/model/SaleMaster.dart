@@ -59,7 +59,8 @@ class SaleItem {
   factory SaleItem.fromMap(Map<String, dynamic> map) {
     return SaleItem(
       itemId: ItemMaster.getStringValue(map, 'itemId'),
-      itemCode: ItemMaster.getStringValue(map, 'itemCode'),
+
+    itemCode: ItemMaster.getStringValue(map, 'itemCode'),
       description: ItemMaster.getStringValue(map, 'description'),
       hsnSacCode: ItemMaster.getStringValue(map, 'hsnSacCode'),
       unitOfMeasurement: ItemMaster.getStringValue(map, 'unitOfMeasurement'),
@@ -114,7 +115,7 @@ class SaleItem {
 /// Updated SaleMaster with GST-specific fields
 class SaleMaster {
   final String id;
-  final String businessId;
+  final String userId;
   final String invoice;
   final String customerName;
   final DateTime date;
@@ -137,7 +138,7 @@ class SaleMaster {
 
   SaleMaster({
     required this.id,
-    required this.businessId,
+    required this.userId,
     required this.invoice,
     required this.customerName,
     required this.date,
@@ -172,7 +173,7 @@ class SaleMaster {
 
     return SaleMaster(
       id: doc.id,
-      businessId: ItemMaster.getStringValue(map, 'businessId'),
+      userId: ItemMaster.getStringValue(map, 'userId'),
       invoice: ItemMaster.getStringValue(map, 'invoice'),
       customerName: ItemMaster.getStringValue(map, 'customerName'),
       date: ItemMaster.getDateTimeValue(map, 'date'),
@@ -196,7 +197,7 @@ class SaleMaster {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'businessId': businessId,
+      'userId': userId,
       'invoice': invoice,
       'customerName': customerName,
       'date': Timestamp.fromDate(date),
@@ -233,7 +234,7 @@ class SaleMaster {
 /// Represents a complete sale transaction.
 // class SaleMaster {
 //   final String id;
-//   final String businessId;
+//   final String userId;
 //   final String invoice;
 //   final String customerName;
 //   final DateTime date;
@@ -242,7 +243,7 @@ class SaleMaster {
 //
 //   SaleMaster({
 //     required this.id,
-//     required this.businessId,
+//     required this.userId,
 //     required this.invoice,
 //     required this.customerName,
 //     required this.date,
@@ -266,7 +267,7 @@ class SaleMaster {
 //
 //     return SaleMaster(
 //       id: doc.id,
-//       businessId: ItemMaster.getStringValue(map, 'businessId'),
+//       userId: ItemMaster.getStringValue(map, 'userId'),
 //       invoice: ItemMaster.getStringValue(map, 'invoice'),
 //       customerName: ItemMaster.getStringValue(map, 'customerName'),
 //       date: ItemMaster.getDateTimeValue(map, 'date'),
@@ -278,7 +279,7 @@ class SaleMaster {
 //   /// Converts the SaleMaster instance to a map for Firestore storage.
 //   Map<String, dynamic> toFirestore() {
 //     return {
-//       'businessId': businessId,
+//       'userId': userId,
 //       'invoice': invoice,
 //       'customerName': customerName,
 //       'date': Timestamp.fromDate(date),

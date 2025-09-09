@@ -37,6 +37,8 @@ android {
 dependencies {
     implementation("com.google.firebase:firebase-analytics")
     implementation(platform("com.google.firebase:firebase-bom:33.6.0"))  // Updated BOM version
+    implementation("com.google.firebase:firebase-messaging:23.4.0")
+    implementation("androidx.work:work-runtime:2.9.0")
 }
 
 flutter {

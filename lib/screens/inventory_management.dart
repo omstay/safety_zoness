@@ -6,11 +6,12 @@ import 'package:safetyzoness/screens/report/sales_by_hsn_report_screen.dart';
 import '../model/SaleMaster.dart'; // Import the updated SaleMaster and SaleItem
 import 'add_edit_sale_screen.dart'; // Import the new AddEditSaleScreen
 import 'package:flutter/foundation.dart'; // Import for debugPrint
+import 'package:firebase_auth/firebase_auth.dart'; // Added Firebase Auth
 
 // Data Models with improved dynamic data handling
 class ItemMaster {
   final String id;
-  final String businessId;
+  final String userId;
   final String itemCode;
   final String description;
   final String hsnSacCode;
@@ -27,7 +28,7 @@ class ItemMaster {
 
   ItemMaster({
     required this.id,
-    required this.businessId,
+    required this.userId,
     required this.itemCode,
     required this.description,
     required this.hsnSacCode,
@@ -51,7 +52,7 @@ class ItemMaster {
     final Map<String, dynamic> map = data as Map<String, dynamic>;
     return ItemMaster(
       id: doc.id,
-      businessId: getStringValue(map, 'businessId'),
+      userId: getStringValue(map, 'userId'),
       itemCode: getStringValue(map, 'itemCode'),
       description: getStringValue(map, 'description'),
       hsnSacCode: getStringValue(map, 'hsnSacCode'),
@@ -101,7 +102,7 @@ class ItemMaster {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'businessId': businessId,
+      'userId': userId,
       'itemCode': itemCode,
       'description': description,
       'hsnSacCode': hsnSacCode,
@@ -121,7 +122,7 @@ class ItemMaster {
 
 class StockInventory {
   final String id;
-  final String businessId;
+  final String userId;
   final String itemId;
   final String location;
   final double currentStock;
@@ -130,7 +131,7 @@ class StockInventory {
 
   StockInventory({
     required this.id,
-    required this.businessId,
+    required this.userId,
     required this.itemId,
     required this.location,
     required this.currentStock,
@@ -146,7 +147,7 @@ class StockInventory {
     final Map<String, dynamic> map = data as Map<String, dynamic>;
     return StockInventory(
       id: doc.id,
-      businessId: ItemMaster.getStringValue(map, 'businessId'),
+      userId: ItemMaster.getStringValue(map, 'userId'),
       itemId: ItemMaster.getStringValue(map, 'itemId'),
       location: ItemMaster.getStringValue(map, 'location'),
       currentStock: ItemMaster.getDoubleValue(map, 'currentStock'),
@@ -157,7 +158,7 @@ class StockInventory {
 
   Map<String, dynamic> toFirestore() {
     return {
-      'businessId': businessId,
+      'userId': userId,
       'itemId': itemId,
       'location': location,
       'currentStock': currentStock,
@@ -169,19 +170,19 @@ class StockInventory {
 
 // Configuration class for business settings
 class BusinessConfig {
-  static const String defaultBusinessId = 'default_business_001'; // Set your default business ID here
+  static const String defaultuserId = 'default_business_001'; // Set your default business ID here
 
   // You can modify this method to get business ID from SharedPreferences,
   // environment variables, or any other source
-  static String getCurrentBusinessId() {
-    return defaultBusinessId;
+  static String getCurrentuserId() {
+    return defaultuserId;
   }
 }
 
 // Add Stock Dialog Widget
 class AddStockDialog extends StatefulWidget {
-  final String businessId;
-  const AddStockDialog({super.key, required this.businessId});
+  final String userId; // Change from userId to userId
+  const AddStockDialog({super.key, required this.userId});
 
   @override
   State<AddStockDialog> createState() => _AddStockDialogState();
@@ -207,7 +208,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
     try {
       final snapshot = await _firestore
           .collection('items')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.userId) // Change from userId to userId
           .where('isActive', isEqualTo: true)
           .get();
       setState(() {
@@ -251,7 +252,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
 
     try {
       await _firestore.collection('stock_inventory').add({
-        'businessId': widget.businessId,
+        'userId': widget.userId, // Change from userId to userId
         'itemId': _selectedItemId,
         'location': _locationController.text.trim(),
         'currentStock': double.parse(_currentStockController.text),
@@ -428,8 +429,8 @@ class _AddStockDialogState extends State<AddStockDialog> {
 
 // Main Inventory Management Screen - No Authentication Required
 class InventoryManagementScreen extends StatefulWidget {
-  final String? businessId; // Optional parameter to override default
-  const InventoryManagementScreen({super.key, this.businessId});
+  final String? userId; // Changed from userId to userId
+  const InventoryManagementScreen({super.key, this.userId});
 
   @override
   State<InventoryManagementScreen> createState() => _InventoryManagementScreenState();
@@ -439,7 +440,8 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  late String _currentBusinessId;
+  final FirebaseAuth _auth = FirebaseAuth.instance; // Added Firebase Auth instance
+  late String _currentUserId;
 
   // GlobalKeys to access child tab states
   final GlobalKey<_SalesTabState> _salesTabKey = GlobalKey<_SalesTabState>();
@@ -449,17 +451,30 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
-    // Use provided businessId or get from config
-    _currentBusinessId = widget.businessId ?? BusinessConfig.getCurrentBusinessId();
+    _currentUserId = widget.userId ?? _auth.currentUser?.uid ?? '';
+
+    if (_currentUserId.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacementNamed('/login');
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    if (_currentUserId.isEmpty) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
         title: const Text(
-          'Sales',
+          'My Inventory', // Updated title to reflect user-specific data
           style: TextStyle(
             fontWeight: FontWeight.bold,
             color: Colors.black87,
@@ -467,6 +482,17 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
         ),
         backgroundColor: Colors.white,
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.black87),
+            onPressed: () async {
+              await _auth.signOut();
+              if (mounted) {
+                Navigator.of(context).pushReplacementNamed('/login');
+              }
+            },
+          ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: const Color(0xFF667eea),
@@ -484,10 +510,10 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          SalesTab(key: _salesTabKey, businessId: _currentBusinessId,), // Assign key
-          ItemsTab(key: _itemsTabKey, businessId: _currentBusinessId), // Assign key
-          StockTab(businessId: _currentBusinessId),
-          ReportsTab(businessId: _currentBusinessId),
+          SalesTab(key: _salesTabKey, userId: _currentUserId), // Pass userId instead of userId
+          ItemsTab(key: _itemsTabKey, userId: _currentUserId), // Pass userId instead of userId
+          StockTab(userId: _currentUserId), // Pass userId instead of userId
+          ReportsTab(userId: _currentUserId), // Pass userId instead of userId
         ],
       ),
       floatingActionButton: AnimatedBuilder(
@@ -496,7 +522,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
           if (_tabController.index == 0) { // Sales Tab
             return FloatingActionButton.extended(
               onPressed: () {
-                _salesTabKey.currentState?.showAddSaleDialog(); // Call public method via key
+                _salesTabKey.currentState?.showAddSaleDialog();
               },
               backgroundColor: const Color(0xFF667eea),
               foregroundColor: Colors.white,
@@ -506,7 +532,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
           } else if (_tabController.index == 1) { // Items Tab
             return FloatingActionButton.extended(
               onPressed: () {
-                _itemsTabKey.currentState?.showAddItemDialog(); // Call public method via key
+                _itemsTabKey.currentState?.showAddItemDialog();
               },
               backgroundColor: const Color(0xFF667eea),
               foregroundColor: Colors.white,
@@ -538,15 +564,15 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
   void _showAddStockDialog() {
     showDialog(
       context: context,
-      builder: (context) => AddStockDialog(businessId: _currentBusinessId),
+      builder: (context) => AddStockDialog(userId: _currentUserId),
     );
   }
 }
 
 // Items Tab with improved error handling
 class ItemsTab extends StatefulWidget {
-  final String businessId;
-  const ItemsTab({super.key, required this.businessId});
+  final String userId; // Changed from userId to userId
+  const ItemsTab({super.key, required this.userId});
 
   @override
   State<ItemsTab> createState() => _ItemsTabState();
@@ -598,7 +624,10 @@ class _ItemsTabState extends State<ItemsTab> {
         // Items List
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
-            stream: _firestore.collection('items').where('businessId', isEqualTo: widget.businessId).where('isActive', isEqualTo: true).snapshots(), // Corrected collection to 'items'
+            stream: _firestore.collection('items')
+                .where('userId', isEqualTo: widget.userId)
+                .where('isActive', isEqualTo: true)
+                .snapshots(), // Corrected collection to 'items'
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 debugPrint('ItemsTab StreamBuilder Error: ${snapshot.error}'); // Debug print
@@ -658,14 +687,14 @@ class _ItemsTabState extends State<ItemsTab> {
             padding: const EdgeInsets.all(16.0),
             child: FloatingActionButton.extended(
               heroTag: 'generate_items_report',
-              label: const Text('Generate All Items Report'),
+              label: const Text('Generate My Items Report'), // Updated label
               icon: const Icon(Icons.document_scanner),
               backgroundColor: Colors.blue,
               onPressed: () async {
                 try {
                   final snapshot = await _firestore
                       .collection('items')
-                      .where('businessId', isEqualTo: widget.businessId)
+                      .where('userId', isEqualTo: widget.userId)
                       .where('isActive', isEqualTo: true)
                       .get();
                   final items = snapshot.docs
@@ -1127,7 +1156,7 @@ class _ItemsTabState extends State<ItemsTab> {
       final profitMargin = costPrice > 0 ? ((sellingPrice - costPrice) / costPrice) * 100 : 0;
 
       final itemData = {
-        'businessId': widget.businessId,
+        'userId': widget.userId, // Use userId instead of userId
         'itemCode': controllers['itemCode']!.text.trim(),
         'description': controllers['description']!.text.trim(),
         'hsnSacCode': controllers['hsnSacCode']!.text.trim(),
@@ -1287,8 +1316,8 @@ class _ItemsTabState extends State<ItemsTab> {
 }
 
 class SalesTab extends StatefulWidget {
-  final String businessId;
-  const SalesTab({super.key, required this.businessId});
+  final String userId;
+  const SalesTab({super.key, required this.userId});
 
   @override
   State<SalesTab> createState() => _SalesTabState();
@@ -1299,21 +1328,11 @@ class _SalesTabState extends State<SalesTab> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Made public for access from parent widget
-  void showAddSaleDialog() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddEditSaleScreen(businessId: widget.businessId), // No saleId for new sale
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Column(
       children: [
-        // Search bar
+        // Search bar (same as before)
         Padding(
           padding: const EdgeInsets.all(16),
           child: TextField(
@@ -1333,27 +1352,29 @@ class _SalesTabState extends State<SalesTab> {
             },
           ),
         ),
-        // Sales List
+        // FIXED Sales List - Removed orderBy to avoid index requirement
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('sales')
-                .orderBy('date', descending: true)
+                .where('userId', isEqualTo: widget.userId)
+            // REMOVED: .orderBy('date', descending: true) - This was causing the index error
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
-                debugPrint('SalesTab StreamBuilder Error: ${snapshot.error}'); // Debug print
+                debugPrint('SalesTab StreamBuilder Error: ${snapshot.error}');
                 return const Center(child: Text("Error loading sales"));
               }
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
+
               final sales = snapshot.data!.docs
                   .map((doc) {
                 try {
                   return SaleMaster.fromFirestore(doc);
                 } catch (e) {
-                  debugPrint('Error parsing sale: $e'); // Debug print
+                  debugPrint('Error parsing sale: $e');
                   return null;
                 }
               })
@@ -1361,6 +1382,9 @@ class _SalesTabState extends State<SalesTab> {
                   .cast<SaleMaster>()
                   .where((sale) => _searchQuery.isEmpty || sale.customerName.toLowerCase().contains(_searchQuery))
                   .toList();
+
+              // MANUAL SORTING: Sort by date in Dart since we can't use orderBy in Firestore
+              sales.sort((a, b) => b.date.compareTo(a.date)); // Sort descending by date
 
               if (sales.isEmpty) {
                 return _buildEmptyState();
@@ -1376,25 +1400,31 @@ class _SalesTabState extends State<SalesTab> {
             },
           ),
         ),
+        // Report generation button - Also remove orderBy here
         Align(
           alignment: Alignment.bottomRight,
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: FloatingActionButton.extended(
               heroTag: 'generate_sales_report',
-              label: const Text('Generate All Sales Report'),
+              label: const Text('Generate My Sales Report'),
               icon: const Icon(Icons.document_scanner),
               backgroundColor: Colors.blue,
               onPressed: () async {
                 try {
                   final snapshot = await _firestore
                       .collection('sales')
-                      .where('businessId', isEqualTo: widget.businessId)
-                      .orderBy('date', descending: true)
+                      .where('userId', isEqualTo: widget.userId)
+                  // REMOVED: .orderBy('date', descending: true) - Avoid index requirement
                       .get();
+
                   final sales = snapshot.docs
                       .map((doc) => SaleMaster.fromFirestore(doc))
                       .toList();
+
+                  // MANUAL SORTING: Sort by date in Dart
+                  sales.sort((a, b) => b.date.compareTo(a.date));
+
                   if (sales.isEmpty) {
                     if (mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
@@ -1403,7 +1433,8 @@ class _SalesTabState extends State<SalesTab> {
                     }
                     return;
                   }
-                  // Show options to download, share, or print
+
+                  // Rest of the method remains the same...
                   showModalBottomSheet(
                     context: context,
                     builder: (BuildContext bc) {
@@ -1418,7 +1449,7 @@ class _SalesTabState extends State<SalesTab> {
                                 await PDFUtils.generateAndDownloadAllSalesPDF(sales);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Sales Report PDF downloaded!'), backgroundColor: Colors.green),
+                                    const SnackBar(content: Text('My Sales Report PDF downloaded!'), backgroundColor: Colors.green),
                                   );
                                 }
                               },
@@ -1431,7 +1462,7 @@ class _SalesTabState extends State<SalesTab> {
                                 await PDFUtils.shareAllSalesPDF(sales);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Sales Report PDF shared!'), backgroundColor: Colors.green),
+                                    const SnackBar(content: Text('My Sales Report PDF shared!'), backgroundColor: Colors.green),
                                   );
                                 }
                               },
@@ -1444,7 +1475,7 @@ class _SalesTabState extends State<SalesTab> {
                                 await PDFUtils.printAllSalesPDF(sales);
                                 if (mounted) {
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Sales Report PDF sent to printer!'), backgroundColor: Colors.green),
+                                    const SnackBar(content: Text('My Sales Report PDF sent to printer!'), backgroundColor: Colors.green),
                                   );
                                 }
                               },
@@ -1467,6 +1498,29 @@ class _SalesTabState extends State<SalesTab> {
           ),
         ),
       ],
+    );
+  }
+
+  void showAddSaleDialog() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditSaleScreen(userId: widget.userId), // Pass userId instead of businessId
+      ),
+    );
+  }
+
+// And update the edit sale dialog method
+  void _showEditSaleDialog(SaleMaster sale) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => AddEditSaleScreen(
+          userId: widget.userId, // Pass userId instead of businessId
+          saleId: sale.id,
+          saleDoc: null,
+        ),
+      ),
     );
   }
 
@@ -1639,18 +1693,7 @@ class _SalesTabState extends State<SalesTab> {
     );
   }
 
-  void _showEditSaleDialog(SaleMaster sale) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (_) => AddEditSaleScreen(
-          businessId: widget.businessId,
-          saleId: sale.id,
-          saleDoc: null, // Pass saleId, screen will fetch doc
-        ),
-      ),
-    );
-  }
+
 
   Future<void> _deleteSale(String saleId) async {
     try {
@@ -1688,8 +1731,8 @@ class _SalesTabState extends State<SalesTab> {
 
 // Stock Tab with improved error handling
 class StockTab extends StatefulWidget {
-  final String businessId;
-  const StockTab({super.key, required this.businessId});
+  final String userId; // Changed from userId to userId
+  const StockTab({super.key, required this.userId});
 
   @override
   State<StockTab> createState() => _StockTabState();
@@ -1703,7 +1746,7 @@ class _StockTabState extends State<StockTab> {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('stock_inventory')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.userId)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -1767,7 +1810,7 @@ class _StockTabState extends State<StockTab> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No stock records found',
+            'No stock records found', // Updated message for user-specific context
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -1776,7 +1819,7 @@ class _StockTabState extends State<StockTab> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Stock levels will appear here',
+            'Your stock levels will appear here', // Updated message
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade500,
@@ -1948,10 +1991,10 @@ class _StockTabState extends State<StockTab> {
   }
 }
 
-// Enhanced Reports Tab with Real Data Analysis
+// Enhanced Reports Tab with User-specific Data Analysis
 class ReportsTab extends StatefulWidget {
-  final String businessId;
-  const ReportsTab({super.key, required this.businessId});
+  final String userId; // Changed from userId to userId
+  const ReportsTab({super.key, required this.userId});
 
   @override
   State<ReportsTab> createState() => _ReportsTabState();
@@ -1968,7 +2011,7 @@ class _ReportsTabState extends State<ReportsTab> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Inventory Reports',
+            'My Inventory Reports', // Updated title for user-specific context
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -2036,7 +2079,7 @@ class _ReportsTabState extends State<ReportsTab> {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('items')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.userId)
           .where('isActive', isEqualTo: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -2091,7 +2134,7 @@ class _ReportsTabState extends State<ReportsTab> {
     return StreamBuilder<QuerySnapshot>(
       stream: _firestore
           .collection('stock_inventory')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.userId)
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -2263,7 +2306,7 @@ class _ReportsTabState extends State<ReportsTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('stock_inventory')
-                .where('businessId', isEqualTo: widget.businessId)
+                .where('userId', isEqualTo: widget.userId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -2354,7 +2397,7 @@ class _ReportsTabState extends State<ReportsTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('stock_inventory')
-                .where('businessId', isEqualTo: widget.businessId)
+                .where('userId', isEqualTo: widget.userId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -2467,7 +2510,7 @@ class _ReportsTabState extends State<ReportsTab> {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => SalesByHsnReportScreen(businessId: widget.businessId),
+        builder: (context) => SalesByHsnReportScreen(businessId: widget.userId),
       ),
     );
   }
@@ -2483,7 +2526,7 @@ class _ReportsTabState extends State<ReportsTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('stock_inventory')
-                .where('businessId', isEqualTo: widget.businessId)
+                .where('userId', isEqualTo: widget.userId)
                 .snapshots(),
             builder: (context, snapshot) {
               if (!snapshot.hasData) {
@@ -2589,7 +2632,7 @@ class _ReportsTabState extends State<ReportsTab> {
           child: StreamBuilder<QuerySnapshot>(
             stream: _firestore
                 .collection('items')
-                .where('businessId', isEqualTo: widget.businessId)
+                .where('userId', isEqualTo: widget.userId)
                 .where('isActive', isEqualTo: true)
                 .snapshots(),
             builder: (context, snapshot) {
@@ -2697,9 +2740,9 @@ class _ReportsTabState extends State<ReportsTab> {
 }
 
 class GenerateStockReportButton extends StatefulWidget {
-  final String businessId;
+  final String userId; // Change from userId to userId
 
-  const GenerateStockReportButton({Key? key, required this.businessId}) : super(key: key);
+  const GenerateStockReportButton({Key? key, required this.userId}) : super(key: key);
 
   @override
   State<GenerateStockReportButton> createState() => _GenerateStockReportButtonState();
@@ -2723,7 +2766,7 @@ class _GenerateStockReportButtonState extends State<GenerateStockReportButton> {
             try {
               final stockSnapshot = await _firestore
                   .collection('stock_inventory')
-                  .where('businessId', isEqualTo: widget.businessId)
+                  .where('userId', isEqualTo: widget.userId)
                   .get();
               final stocks = stockSnapshot.docs
                   .map((doc) => StockInventory.fromFirestore(doc))
@@ -2731,7 +2774,7 @@ class _GenerateStockReportButtonState extends State<GenerateStockReportButton> {
 
               final itemSnapshot = await _firestore
                   .collection('items')
-                  .where('businessId', isEqualTo: widget.businessId)
+                  .where('userId', isEqualTo: widget.userId) // Add this filter
                   .where('isActive', isEqualTo: true)
                   .get();
               final items = itemSnapshot.docs
@@ -2813,7 +2856,7 @@ class _GenerateStockReportButtonState extends State<GenerateStockReportButton> {
 }
 // GSTR-1 Section Screen for B2B, B2C Large, B2C Small, Exports
 class GSTR1SectionScreen extends StatefulWidget {
-  final String businessId;
+  final String userId;
   final String sectionTitle;
   final String sectionFilter;
   final DateTime fromDate;
@@ -2821,7 +2864,7 @@ class GSTR1SectionScreen extends StatefulWidget {
 
   const GSTR1SectionScreen({
     super.key,
-    required this.businessId,
+    required this.userId,
     required this.sectionTitle,
     required this.sectionFilter,
     required this.fromDate,
@@ -2852,7 +2895,7 @@ class _GSTR1SectionScreenState extends State<GSTR1SectionScreen> {
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('sales')
-            .where('businessId', isEqualTo: widget.businessId)
+            .where('userId', isEqualTo: widget.userId) // Add this filter
             .where('gstr1Section', isEqualTo: widget.sectionFilter)
             .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(widget.fromDate))
             .where('date', isLessThanOrEqualTo: Timestamp.fromDate(widget.toDate))
@@ -2908,7 +2951,7 @@ class _GSTR1SectionScreenState extends State<GSTR1SectionScreen> {
                   ),
                   borderRadius: BorderRadius.circular(12),
                   boxShadow: [
-                    BoxShadow(
+                    BoxShadow( // Change from Shadow to BoxShadow
                       color: Colors.blue.withOpacity(0.3),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
@@ -3086,7 +3129,7 @@ class _GSTR1SectionScreenState extends State<GSTR1SectionScreen> {
     try {
       final salesSnapshot = await _firestore
           .collection('sales')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.userId) // Add this filter
           .where('gstr1Section', isEqualTo: widget.sectionFilter)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(widget.fromDate))
           .where('date', isLessThanOrEqualTo: Timestamp.fromDate(widget.toDate))
@@ -3157,13 +3200,13 @@ class _GSTR1SectionScreenState extends State<GSTR1SectionScreen> {
 
 // HSN Summary Screen
 class HSNSummaryScreen extends StatefulWidget {
-  final String businessId;
+  final String userId;
   final DateTime fromDate;
   final DateTime toDate;
 
   const HSNSummaryScreen({
     super.key,
-    required this.businessId,
+    required this.userId,
     required this.fromDate,
     required this.toDate,
   });
@@ -3317,7 +3360,7 @@ class _HSNSummaryScreenState extends State<HSNSummaryScreen> {
   Future<List<Map<String, dynamic>>> _generateHSNSummary() async {
     final salesSnapshot = await _firestore
         .collection('sales')
-        .where('businessId', isEqualTo: widget.businessId)
+        .where('userId', isEqualTo: widget.userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(widget.fromDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(widget.toDate))
         .get();
@@ -3410,13 +3453,13 @@ class _HSNSummaryScreenState extends State<HSNSummaryScreen> {
 
 // Documents Summary Screen
 class DocumentsSummaryScreen extends StatefulWidget {
-  final String businessId;
+  final String userId;
   final DateTime fromDate;
   final DateTime toDate;
 
   const DocumentsSummaryScreen({
     super.key,
-    required this.businessId,
+    required this.userId,
     required this.fromDate,
     required this.toDate,
   });
@@ -3539,7 +3582,7 @@ class _DocumentsSummaryScreenState extends State<DocumentsSummaryScreen> {
   Future<Map<String, dynamic>> _generateDocumentsSummary() async {
     final salesSnapshot = await _firestore
         .collection('sales')
-        .where('businessId', isEqualTo: widget.businessId)
+        .where('userId', isEqualTo: widget.userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(widget.fromDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(widget.toDate))
         .get();
@@ -3601,13 +3644,13 @@ class _DocumentsSummaryScreenState extends State<DocumentsSummaryScreen> {
 
 // Nil Rated Supplies Screen
 class NilRatedSuppliesScreen extends StatefulWidget {
-  final String businessId;
+  final String userId;
   final DateTime fromDate;
   final DateTime toDate;
 
   const NilRatedSuppliesScreen({
     super.key,
-    required this.businessId,
+    required this.userId,
     required this.fromDate,
     required this.toDate,
   });
@@ -3728,7 +3771,7 @@ class _NilRatedSuppliesScreenState extends State<NilRatedSuppliesScreen> {
   Future<Map<String, List<Map<String, dynamic>>>> _generateNilRatedData() async {
     final salesSnapshot = await _firestore
         .collection('sales')
-        .where('businessId', isEqualTo: widget.businessId)
+        .where('userId', isEqualTo: widget.userId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(widget.fromDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(widget.toDate))
         .get();
@@ -3770,16 +3813,16 @@ class _NilRatedSuppliesScreenState extends State<NilRatedSuppliesScreen> {
   }
 }
 class StockTabWithReportButton extends StatelessWidget {
-  final String businessId;
+  final String userId;
 
-  const StockTabWithReportButton({Key? key, required this.businessId}) : super(key: key);
+  const StockTabWithReportButton({Key? key, required this.userId}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
-        StockTab(businessId: businessId),
-        GenerateStockReportButton(businessId: businessId),
+        StockTab(userId: userId),
+        GenerateStockReportButton(userId: userId),
       ],
     );
   }

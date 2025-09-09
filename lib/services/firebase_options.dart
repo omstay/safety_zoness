@@ -49,9 +49,11 @@ class DefaultFirebaseOptions {
     messagingSenderId: '827198019651',
     projectId: 'safetyzoness',
     authDomain: 'safetyzoness.firebaseapp.com',
-    storageBucket: 'safetyzoness.firebasestorage.app',
+    storageBucket: 'safetyzoness.appspot.com', // ✅ FIXED
     measurementId: 'G-DDB9K6YJSB',
   );
+
+
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyDWJ7GxoKymrUYba8sJdgy67-3zvJaAfn0',

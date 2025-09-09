@@ -127,9 +127,9 @@ class StockInventory {
 
 // Add Stock Dialog Widget
 class AddStockDialog extends StatefulWidget {
-  final String businessId;
+  final String userId;
 
-  const AddStockDialog({super.key, required this.businessId});
+  const AddStockDialog({super.key, required this.userId});
 
   @override
   State<AddStockDialog> createState() => _AddStockDialogState();
@@ -157,7 +157,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
     try {
       final snapshot = await _firestore
           .collection('items')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('businessId', isEqualTo: widget.userId)
           .where('isActive', isEqualTo: true)
           .get();
 
@@ -180,7 +180,7 @@ class _AddStockDialogState extends State<AddStockDialog> {
 
     try {
       await _firestore.collection('stock_inventory').add({
-        'businessId': widget.businessId,
+        'businessId': widget.userId,
         'itemId': _selectedItemId,
         'location': _locationController.text,
         'currentStock': double.parse(_currentStockController.text),
@@ -445,7 +445,7 @@ class _InventoryManagementScreenState extends State<InventoryManagementScreen>
     // Show add stock dialog
     showDialog(
       context: context,
-      builder: (context) => AddStockDialog(businessId: _currentBusinessId!),
+      builder: (context) => AddStockDialog(userId: _currentBusinessId!),
     );
   }
 }
