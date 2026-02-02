@@ -8,28 +8,31 @@ plugins {
 android {
     namespace = "com.gst.safetyzoness"
     compileSdk = 35
-    ndkVersion = "27.0.12077973"
+
+    defaultConfig {
+        applicationId = "com.gst.safetyzoness"
+        minSdkVersion(23)
+        targetSdkVersion(35)
+        versionCode = 1
+        versionName = "1.0"
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
 
     kotlinOptions {
         jvmTarget = "11"
     }
 
-    defaultConfig {
-        applicationId = "com.gst.safetyzoness"
-        minSdkVersion flutter.minSdkVersion  // Updated from 21 to 23
-        targetSdk = 35
-        versionCode = 1
-        versionName = "1.0"
-    }
-
     buildTypes {
         release {
-            signingConfig = signingConfigs.getByName("debug")
+            // TODO: Replace with your own release signing key
+            signingConfig = signingConfigs.getByName("debug") // temporarily okay
+            isMinifyEnabled = false
+            isShrinkResources = false
         }
     }
 }
@@ -40,10 +43,8 @@ dependencies {
     implementation("com.google.firebase:firebase-messaging:23.4.0")
     implementation("androidx.work:work-runtime:2.9.0")
 
-    // Required for flutter_local_notifications
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.2")
 }
-
 
 flutter {
     source = "../.."

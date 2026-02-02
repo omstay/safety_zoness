@@ -1,4 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:provider/provider.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:safetyzoness/screens/buisssnes_management_screen.dart';
@@ -9,62 +13,85 @@ import 'package:safetyzoness/screens/inventory_management.dart';
 import 'package:safetyzoness/screens/part_management_screen.dart';
 import 'package:safetyzoness/screens/party_screen.dart';
 import 'package:safetyzoness/services/fcm_service.dart';
-
 import 'package:safetyzoness/services/firebase_options.dart';
-import 'screens/subscription_screen.dart';
+import 'package:safetyzoness/screens/subscription_screen.dart';
+
+
+import 'lib/l10n/app_localizations.dart';
+import 'lib/l10n/language_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   try {
-    // ✅ Initialize Firebase FIRST
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
 
-    // ✅ Then setup your FCM service
-    await FCMService.initialize();
-  } catch (e) {
-    if (e.toString().contains('duplicate-app')) {
-      print('Firebase already initialized');
+    // ✅ Only initialize FCM on supported platforms
+    if (!Platform.isWindows) {
+      await FCMService.initialize();
     } else {
-      print('Firebase initialization error: $e');
+      print('Skipping FCM initialization on Windows.');
     }
+  } catch (e) {
+    print('Firebase initialization error: $e');
   }
 
-  runApp(const MyApp());
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => LanguageProvider(),
+      child: const MyApp(),
+    ),
+  );
 }
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TaxEase GST Management',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF1976D2),
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-        fontFamily: 'Roboto',
-        appBarTheme: const AppBarTheme(
-          elevation: 0,
-          centerTitle: true,
-          backgroundColor: Colors.transparent,
-        ),
-      ),
-      home: const AuthWrapper(),
-      routes: {
-        '/main': (context) => const MainScreen(),
-        '/inventory': (context) => const InventoryManagementScreen(),
-        '/subscription': (context) => const SubscriptionScreen(),
-        '/dashboard': (context) => const DashboardScreen(),
-        '/login': (context) => const AuthScreen(),
-        '/gst': (context) => const GSTManagementScreen(),
-        '/party': (context) => const PartyManagementScreen(),
-        '/add_party': (context) => const AddPartyScreen(), // New route
+    return Consumer<LanguageProvider>(
+      builder: (context, languageProvider, child) {
+        return MaterialApp(
+          title: 'TaxEase GST Management',
+          locale: languageProvider.locale,
+          supportedLocales: const [
+            Locale('en'),
+            Locale('ta'),
+          ],
+          localizationsDelegates: const [
+            AppLocalizations.delegate,
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: const Color(0xFF1976D2),
+              brightness: Brightness.light,
+            ),
+            useMaterial3: true,
+            fontFamily: 'Roboto',
+            appBarTheme: const AppBarTheme(
+              elevation: 0,
+              centerTitle: true,
+              backgroundColor: Colors.transparent,
+            ),
+          ),
+          home: const AuthWrapper(),
+          routes: {
+            '/main': (context) => const MainScreen(),
+            '/inventory': (context) => const InventoryManagementScreen(),
+            '/subscription': (context) => const SubscriptionScreen(),
+            '/dashboard': (context) => const DashboardScreen(),
+            '/login': (context) => const AuthScreen(),
+            '/gst': (context) => const GSTManagementScreen(),
+            '/party': (context) => const PartyManagementScreen(),
+            '/add_party': (context) => const AddPartyScreen(),
+          },
+        );
       },
     );
   }
@@ -120,6 +147,8 @@ class _FCMTokenDisplayState extends State<FCMTokenDisplay> {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Card(
       margin: const EdgeInsets.all(16),
       child: Padding(
@@ -142,7 +171,7 @@ class _FCMTokenDisplayState extends State<FCMTokenDisplay> {
                 borderRadius: BorderRadius.circular(8),
               ),
               child: SelectableText(
-                _token ?? 'Loading...',
+                _token ?? localizations.translate('loading'),
                 style: const TextStyle(fontSize: 12),
               ),
             ),
@@ -151,17 +180,17 @@ class _FCMTokenDisplayState extends State<FCMTokenDisplay> {
               children: [
                 ElevatedButton(
                   onPressed: _getToken,
-                  child: const Text('Refresh Token'),
+                  child: Text(localizations.translate('refresh_token')),
                 ),
                 const SizedBox(width: 8),
                 ElevatedButton(
                   onPressed: () async {
                     await FCMService.subscribeToTopic('all_users');
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Subscribed to all_users topic')),
+                      SnackBar(content: Text(localizations.translate('subscribe_to_topic'))),
                     );
                   },
-                  child: const Text('Subscribe to Topic'),
+                  child: Text(localizations.translate('subscribe_to_topic')),
                 ),
               ],
             ),
@@ -171,6 +200,7 @@ class _FCMTokenDisplayState extends State<FCMTokenDisplay> {
     );
   }
 }
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -271,6 +301,8 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
@@ -363,9 +395,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                 opacity: _fadeAnimation,
                 child: Column(
                   children: [
-                    const Text(
-                      'TaxEase GST',
-                      style: TextStyle(
+                    Text(
+                      localizations.translate('app_name'),
+                      style: const TextStyle(
                         fontSize: 32,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -373,9 +405,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       ),
                     ),
                     const SizedBox(height: 8),
-                    const Text(
-                      'Management System',
-                      style: TextStyle(
+                    Text(
+                      localizations.translate('app_subtitle'),
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.w400,
                         color: Colors.white,
@@ -393,9 +425,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                           width: 1,
                         ),
                       ),
-                      child: const Text(
-                        'Your Professional Business Partner',
-                        style: TextStyle(
+                      child: Text(
+                        localizations.translate('app_tagline'),
+                        style: const TextStyle(
                           fontSize: 14,
                           color: Colors.white,
                           fontWeight: FontWeight.w300,
@@ -444,9 +476,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       },
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Loading...',
-                      style: TextStyle(
+                    Text(
+                      localizations.translate('loading'),
+                      style: const TextStyle(
                         fontSize: 16,
                         color: Colors.white70,
                         fontWeight: FontWeight.w300,
@@ -481,47 +513,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   final List<Widget> _screens = [
     const InventoryManagementScreen(),
     const DashboardScreen(),
-    const PartyManagementScreen(), // Add Party Management Screen
+    const PartyManagementScreen(),
     const GSTManagementScreen(),
     const SubscriptionScreen(),
-  ];
-
-  final List<NavigationItem> _navigationItems = [
-    NavigationItem(
-      icon: Icons.inventory_2_outlined,
-      activeIcon: Icons.inventory_2,
-      label: 'Inventory',
-      color: const Color(0xFF4CAF50),
-      gradient: const [Color(0xFF4CAF50), Color(0xFF81C784)],
-    ),
-    NavigationItem(
-      icon: Icons.dashboard_outlined,
-      activeIcon: Icons.dashboard,
-      label: 'Dashboard',
-      color: const Color(0xFF2196F3),
-      gradient: const [Color(0xFF2196F3), Color(0xFF64B5F6)],
-    ),
-    NavigationItem(
-      icon: Icons.people_outline,
-      activeIcon: Icons.people,
-      label: 'Parties',
-      color: const Color(0xFFFF5722),
-      gradient: const [Color(0xFFFF5722), Color(0xFFFF8A65)],
-    ),
-    NavigationItem(
-      icon: Icons.receipt_long_outlined,
-      activeIcon: Icons.receipt_long,
-      label: 'GST',
-      color: const Color(0xFF9C27B0),
-      gradient: const [Color(0xFF9C27B0), Color(0xFFBA68C8)],
-    ),
-    NavigationItem(
-      icon: Icons.card_membership_outlined,
-      activeIcon: Icons.card_membership,
-      label: 'Subscription',
-      color: const Color(0xFFFF9800),
-      gradient: const [Color(0xFFFF9800), Color(0xFFFFB74D)],
-    ),
   ];
 
   @override
@@ -570,6 +564,8 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
   }
 
   void _showLogoutDialog() {
+    final localizations = AppLocalizations.of(context)!;
+
     showDialog(
       context: context,
       builder: (BuildContext context) {
@@ -577,18 +573,18 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
-          title: const Row(
+          title: Row(
             children: [
-              Icon(Icons.logout, color: Color(0xFFE53935)),
-              SizedBox(width: 10),
-              Text('Logout'),
+              const Icon(Icons.logout, color: Color(0xFFE53935)),
+              const SizedBox(width: 10),
+              Text(localizations.translate('logout')),
             ],
           ),
-          content: const Text('Are you sure you want to logout?'),
+          content: Text(localizations.translate('logout_confirm')),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
+              child: Text(localizations.translate('cancel')),
             ),
             ElevatedButton(
               onPressed: () async {
@@ -602,7 +598,7 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                 backgroundColor: const Color(0xFFE53935),
                 foregroundColor: Colors.white,
               ),
-              child: const Text('Logout'),
+              child: Text(localizations.translate('logout')),
             ),
           ],
         );
@@ -612,12 +608,54 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final localizations = AppLocalizations.of(context)!;
+    final languageProvider = Provider.of<LanguageProvider>(context);
+    final isEnglish = languageProvider.locale.languageCode == 'en';
+
+    final List<NavigationItem> _navigationItems = [
+      NavigationItem(
+        icon: Icons.inventory_2_outlined,
+        activeIcon: Icons.inventory_2,
+        label: localizations.translate('inventory'),
+        color: const Color(0xFF4CAF50),
+        gradient: const [Color(0xFF4CAF50), Color(0xFF81C784)],
+      ),
+      NavigationItem(
+        icon: Icons.dashboard_outlined,
+        activeIcon: Icons.dashboard,
+        label: localizations.translate('dashboard'),
+        color: const Color(0xFF2196F3),
+        gradient: const [Color(0xFF2196F3), Color(0xFF64B5F6)],
+      ),
+      NavigationItem(
+        icon: Icons.people_outline,
+        activeIcon: Icons.people,
+        label: localizations.translate('parties'),
+        color: const Color(0xFFFF5722),
+        gradient: const [Color(0xFFFF5722), Color(0xFFFF8A65)],
+      ),
+      NavigationItem(
+        icon: Icons.receipt_long_outlined,
+        activeIcon: Icons.receipt_long,
+        label: localizations.translate('gst'),
+        color: const Color(0xFF9C27B0),
+        gradient: const [Color(0xFF9C27B0), Color(0xFFBA68C8)],
+      ),
+      NavigationItem(
+        icon: Icons.card_membership_outlined,
+        activeIcon: Icons.card_membership,
+        label: localizations.translate('subscription'),
+        color: const Color(0xFFFF9800),
+        gradient: const [Color(0xFFFF9800), Color(0xFFFFB74D)],
+      ),
+    ];
+
     return Scaffold(
       backgroundColor: const Color(0xFFF8F9FA),
       appBar: AppBar(
-        title: const Text(
-          'TaxEase GST',
-          style: TextStyle(
+        title: Text(
+          localizations.translate('app_name'),
+          style: const TextStyle(
             fontWeight: FontWeight.bold,
             fontSize: 20,
             color: Color(0xFF1565C0),
@@ -629,6 +667,55 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
         shadowColor: Colors.transparent,
         surfaceTintColor: Colors.transparent,
         actions: [
+          // Language Switcher
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF1565C0), Color(0xFF1976D2)],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF1565C0).withOpacity(0.3),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  final newLocale = isEnglish ? const Locale('ta') : const Locale('en');
+                  languageProvider.setLocale(newLocale);
+                },
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.language,
+                        size: 18,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        isEnglish ? 'த' : 'EN',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Profile Button
           Container(
             margin: const EdgeInsets.only(right: 16),
             decoration: BoxDecoration(
@@ -824,9 +911,9 @@ class _MainScreenState extends State<MainScreen> with TickerProviderStateMixin {
                                         ),
                                       ),
                                       const SizedBox(height: 4),
-                                      const Text(
-                                        'Logout',
-                                        style: TextStyle(
+                                      Text(
+                                        localizations.translate('logout'),
+                                        style: const TextStyle(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
                                           color: Color(0xFFE53935),

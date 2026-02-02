@@ -1,4 +1,3 @@
-// NEW FILE: sales_register_screen.dart
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
@@ -18,6 +17,7 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
   DateTime _fromDate = DateTime.now().subtract(const Duration(days: 30));
   DateTime _toDate = DateTime.now();
   String _selectedFilter = 'ALL';
+  bool _isLoading = false;
 
   final List<Map<String, String>> _filterOptions = [
     {'value': 'ALL', 'label': 'All Sales'},
@@ -36,10 +36,12 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
         title: const Text('Sales Register'),
         backgroundColor: const Color(0xFF667eea),
         foregroundColor: Colors.white,
+        elevation: 0,
         actions: [
           IconButton(
             icon: const Icon(Icons.file_download),
             onPressed: _exportSalesRegister,
+            tooltip: 'Export Report',
           ),
         ],
       ),
@@ -48,9 +50,25 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
           // Filters Container
           Container(
             padding: const EdgeInsets.all(16),
-            color: Colors.white,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [const Color(0xFF667eea), const Color(0xFF764ba2)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                const Text(
+                  'Filter Sales',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 12),
                 // Date Range Row
                 Row(
                   children: [
@@ -60,34 +78,80 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('From Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              Text(DateFormat('dd/MM/yyyy').format(_fromDate)),
+                              const Text(
+                                'From Date',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 16,
+                                      color: Color(0xFF667eea)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    DateFormat('dd MMM yyyy').format(_fromDate),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    const SizedBox(width: 12),
                     Expanded(
                       child: InkWell(
                         onTap: () => _selectToDate(context),
                         child: Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
+                            color: Colors.white,
                             borderRadius: BorderRadius.circular(8),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              const Text('To Date', style: TextStyle(fontSize: 12, color: Colors.grey)),
-                              Text(DateFormat('dd/MM/yyyy').format(_toDate)),
+                              const Text(
+                                'To Date',
+                                style: TextStyle(
+                                    fontSize: 12, color: Colors.grey),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  const Icon(Icons.calendar_today, size: 16,
+                                      color: Color(0xFF667eea)),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    DateFormat('dd MMM yyyy').format(_toDate),
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
                             ],
                           ),
                         ),
@@ -95,17 +159,32 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Filter Dropdown
                 DropdownButtonFormField<String>(
                   value: _selectedFilter,
-                  decoration: const InputDecoration(
+                  decoration: InputDecoration(
                     labelText: 'Filter by Type',
-                    border: OutlineInputBorder(),
+                    labelStyle: const TextStyle(color: Colors.white70),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: Colors.white70),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(
+                          color: Colors.white, width: 2),
+                    ),
                     filled: true,
-                    fillColor: Colors.white,
+                    fillColor: Colors.white.withOpacity(0.1),
                   ),
+                  dropdownColor: const Color(0xFF667eea),
+                  style: const TextStyle(color: Colors.white),
                   items: _filterOptions.map((filter) {
                     return DropdownMenuItem<String>(
                       value: filter['value'],
@@ -124,11 +203,30 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
 
           // Sales Data
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : StreamBuilder<QuerySnapshot>(
               stream: _buildSalesQuery(),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                            Icons.error_outline, size: 64, color: Colors.red),
+                        const SizedBox(height: 16),
+                        Text('Error: ${snapshot.error}'),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            setState(() {}); // Trigger rebuild
+                          },
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
+                  );
                 }
 
                 if (snapshot.connectionState == ConnectionState.waiting) {
@@ -136,8 +234,17 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
                 }
 
                 final sales = snapshot.data!.docs
-                    .map((doc) => SaleMaster.fromFirestore(doc))
-                    .where((sale) => _applyAdditionalFilters(sale))
+                    .map((doc) {
+                  try {
+                    return SaleMaster.fromFirestore(doc);
+                  } catch (e) {
+                    debugPrint('Error parsing sale: $e');
+                    return null;
+                  }
+                })
+                    .where((sale) =>
+                sale != null && _applyAdditionalFilters(sale))
+                    .cast<SaleMaster>()
                     .toList();
 
                 if (sales.isEmpty) {
@@ -150,7 +257,9 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
                     Expanded(
                       child: SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
-                        child: _buildSalesTable(sales),
+                        child: SingleChildScrollView(
+                          child: _buildSalesTable(sales),
+                        ),
                       ),
                     ),
                   ],
@@ -166,12 +275,14 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
   Stream<QuerySnapshot> _buildSalesQuery() {
     Query query = _firestore
         .collection('sales')
-        .where('businessId', isEqualTo: widget.businessId)
+        .where('userId', isEqualTo: widget.businessId)
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(_fromDate))
         .where('date', isLessThanOrEqualTo: Timestamp.fromDate(_toDate))
         .orderBy('date', descending: true);
 
-    if (_selectedFilter != 'ALL' && !['INTRA', 'INTER'].contains(_selectedFilter)) {
+    // Apply filter if not 'ALL' and not INTRA/INTER
+    if (_selectedFilter != 'ALL' &&
+        !['INTRA', 'INTER'].contains(_selectedFilter)) {
       query = query.where('gstr1Section', isEqualTo: _selectedFilter);
     }
 
@@ -210,37 +321,110 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
 
     return Container(
       padding: const EdgeInsets.all(16),
-      color: Colors.blue.shade50,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Colors.blue.shade50, Colors.blue.shade100],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
       child: Column(
         children: [
-          Text(
-            'Sales Summary (${sales.length} invoices)',
-            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Sales Summary',
+                style: const TextStyle(
+                    fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF667eea),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  '${sales.length} invoices',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildSummaryItem('Taxable', totalTaxableValue),
-              _buildSummaryItem('CGST', totalCGST),
-              _buildSummaryItem('SGST', totalSGST),
-              _buildSummaryItem('IGST', totalIGST),
-              _buildSummaryItem('Total', grandTotal),
-            ],
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _buildSummaryItem(
+                    'Taxable', totalTaxableValue, Icons.monetization_on),
+                const SizedBox(width: 16),
+                _buildSummaryItem('CGST', totalCGST, Icons.account_balance),
+                const SizedBox(width: 16),
+                _buildSummaryItem('SGST', totalSGST, Icons.account_balance),
+                const SizedBox(width: 16),
+                _buildSummaryItem('IGST', totalIGST, Icons.flag),
+                const SizedBox(width: 16),
+                _buildSummaryItem(
+                    'Total', grandTotal, Icons.price_check, isTotal: true),
+              ],
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSummaryItem(String label, double value) {
-    return Column(
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-        const SizedBox(height: 4),
-        Text('₹${value.toStringAsFixed(0)}',
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-      ],
+  Widget _buildSummaryItem(String label, double value, IconData icon,
+      {bool isTotal = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isTotal ? const Color(0xFF667eea) : Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: isTotal ? Colors.white : const Color(0xFF667eea),
+              size: 20),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              color: isTotal ? Colors.white70 : Colors.grey,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '₹${value.toStringAsFixed(2)}',
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.bold,
+              color: isTotal ? Colors.white : Colors.black87,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -248,21 +432,43 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
     return DataTable(
       columnSpacing: 16,
       horizontalMargin: 16,
-      headingRowColor: MaterialStateProperty.all(Colors.grey.shade100),
+      headingRowColor: MaterialStateProperty.all(
+          const Color(0xFF667eea).withOpacity(0.1)),
+      headingRowHeight: 48,
+      dataRowHeight: 56,
       columns: const [
-        DataColumn(label: Text('Date', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Invoice', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Customer', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('GSTIN', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('POS', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Type', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Taxable Value', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('CGST', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('SGST', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('IGST', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Cess', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Total', style: TextStyle(fontWeight: FontWeight.bold))),
-        DataColumn(label: Text('Actions', style: TextStyle(fontWeight: FontWeight.bold))),
+        DataColumn(label: Text('Date',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('Invoice',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('Customer',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('GSTIN',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('POS',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('Type',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
+        DataColumn(label: Text('Taxable Value',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('CGST',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('SGST',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('IGST',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('Cess',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('Total',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+            numeric: true),
+        DataColumn(label: Text('Actions',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12))),
       ],
       rows: sales.map((sale) {
         double saleTaxableValue = 0;
@@ -281,46 +487,68 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
 
         return DataRow(
           cells: [
-            DataCell(Text(DateFormat('dd/MM/yy').format(sale.date))),
-            DataCell(Text(sale.invoice)),
+            DataCell(Text(DateFormat('dd/MM/yy').format(sale.date),
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text(sale.invoice, style: const TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w600))),
             DataCell(SizedBox(
               width: 120,
-              child: Text(sale.customerName, overflow: TextOverflow.ellipsis),
+              child: Text(
+                sale.customerName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11),
+              ),
             )),
-            DataCell(Text(sale.recipientGSTIN.isEmpty ? 'N/A' : sale.recipientGSTIN)),
-            DataCell(Text(sale.placeOfSupply)),
+            DataCell(Text(
+              sale.recipientGSTIN.isEmpty ? 'N/A' : sale.recipientGSTIN,
+              style: const TextStyle(fontSize: 10),
+            )),
+            DataCell(
+                Text(sale.placeOfSupply, style: const TextStyle(fontSize: 11))),
             DataCell(Container(
-              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
               decoration: BoxDecoration(
-                color: _getTypeColor(sale.gstr1Section).withOpacity(0.1),
+                color: _getTypeColor(sale.supplyType).withOpacity(0.1),
                 borderRadius: BorderRadius.circular(4),
+                border: Border.all(
+                    color: _getTypeColor(sale.supplyType), width: 1),
               ),
               child: Text(
                 sale.supplyType,
                 style: TextStyle(
                   fontSize: 10,
-                  fontWeight: FontWeight.w500,
-                  color: _getTypeColor(sale.gstr1Section),
+                  fontWeight: FontWeight.bold,
+                  color: _getTypeColor(sale.supplyType),
                 ),
               ),
             )),
-            DataCell(Text('₹${saleTaxableValue.toStringAsFixed(2)}')),
-            DataCell(Text('₹${saleCGST.toStringAsFixed(2)}')),
-            DataCell(Text('₹${saleSGST.toStringAsFixed(2)}')),
-            DataCell(Text('₹${saleIGST.toStringAsFixed(2)}')),
-            DataCell(Text('₹${saleCess.toStringAsFixed(2)}')),
-            DataCell(Text('₹${sale.total.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold))),
+            DataCell(Text('₹${saleTaxableValue.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text('₹${saleCGST.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text('₹${saleSGST.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text('₹${saleIGST.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text('₹${saleCess.toStringAsFixed(2)}',
+                style: const TextStyle(fontSize: 11))),
+            DataCell(Text(
+              '₹${sale.total.toStringAsFixed(2)}',
+              style: const TextStyle(fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF667eea)),
+            )),
             DataCell(Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.picture_as_pdf, size: 16, color: Colors.red),
+                  icon: const Icon(
+                      Icons.picture_as_pdf, size: 18, color: Colors.red),
                   onPressed: () => PDFUtils.generateAndDownloadPDF(sale),
                   tooltip: 'Download PDF',
                 ),
                 IconButton(
-                  icon: const Icon(Icons.info, size: 16, color: Colors.blue),
+                  icon: const Icon(Icons.info, size: 18, color: Colors.blue),
                   onPressed: () => _showSaleDetails(sale),
                   tooltip: 'View Details',
                 ),
@@ -334,14 +562,10 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
 
   Color _getTypeColor(String type) {
     switch (type) {
-      case 'B2B':
-        return Colors.blue;
-      case 'B2C_LARGE':
+      case 'INTRA':
         return Colors.green;
-      case 'B2C_SMALL':
+      case 'INTER':
         return Colors.orange;
-      case 'EXPORT':
-        return Colors.purple;
       default:
         return Colors.grey;
     }
@@ -352,11 +576,23 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.receipt_long, size: 80, color: Colors.grey),
+          Icon(Icons.receipt_long, size: 80, color: Colors.grey.shade300),
           const SizedBox(height: 16),
-          const Text('No sales found', style: TextStyle(fontSize: 18, color: Colors.grey)),
+          const Text(
+            'No sales found',
+            style: TextStyle(
+                fontSize: 18, color: Colors.grey, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          Text('for the selected filters', style: TextStyle(fontSize: 14, color: Colors.grey.shade600)),
+          Text(
+            'for the selected filters',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Try adjusting your filters or date range',
+            style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+          ),
         ],
       ),
     );
@@ -367,7 +603,19 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
       context: context,
       initialDate: _fromDate,
       firstDate: DateTime(2020),
-      lastDate: _toDate, // Ensure from date can't be after to date
+      lastDate: _toDate,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF667eea),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _fromDate) {
       setState(() => _fromDate = picked);
@@ -378,8 +626,20 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
     final picked = await showDatePicker(
       context: context,
       initialDate: _toDate,
-      firstDate: _fromDate, // Ensure to date can't be before from date
+      firstDate: _fromDate,
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF667eea),
+              onPrimary: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null && picked != _toDate) {
       setState(() => _toDate = picked);
@@ -389,90 +649,158 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
   void _showSaleDetails(SaleMaster sale) {
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Invoice: ${sale.invoice}'),
-        content: SizedBox(
-          width: double.maxFinite,
-          height: 400,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) =>
+          AlertDialog(
+            title: Row(
               children: [
-                _buildDetailRow('Customer', sale.customerName),
-                _buildDetailRow('Date', DateFormat('dd/MM/yyyy').format(sale.date)),
-                _buildDetailRow('GSTIN', sale.recipientGSTIN.isEmpty ? 'N/A' : sale.recipientGSTIN),
-                _buildDetailRow('POS', sale.placeOfSupply),
-                _buildDetailRow('Supply Type', sale.supplyType),
-                _buildDetailRow('Sale Type', sale.saleType),
-                _buildDetailRow('Document Type', sale.documentType),
-                if (sale.eWayBillNo != null) _buildDetailRow('E-Way Bill', sale.eWayBillNo!),
-                const SizedBox(height: 16),
-                const Text('Items:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                const SizedBox(height: 8),
-
-                // Items Table
-                SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: DataTable(
-                    columnSpacing: 12,
-                    dataRowHeight: 40,
-                    headingRowHeight: 35,
-                    columns: const [
-                      DataColumn(label: Text('Description', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('HSN', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Qty', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Rate', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Taxable', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Tax', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                      DataColumn(label: Text('Total', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold))),
-                    ],
-                    rows: sale.items.map((item) {
-                      final totalTaxRate = item.igstRate > 0 ? item.igstRate : (item.cgstRate + item.sgstRate);
-                      return DataRow(
-                        cells: [
-                          DataCell(SizedBox(width: 80, child: Text(item.description, style: const TextStyle(fontSize: 11), overflow: TextOverflow.ellipsis))),
-                          DataCell(Text(item.hsnSacCode, style: const TextStyle(fontSize: 11))),
-                          DataCell(Text(item.quantity.toStringAsFixed(1), style: const TextStyle(fontSize: 11))),
-                          DataCell(Text('₹${item.sellingPricePerUnit.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11))),
-                          DataCell(Text('₹${item.totalTaxableValue.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11))),
-                          DataCell(Text('${totalTaxRate.toStringAsFixed(1)}%', style: const TextStyle(fontSize: 11))),
-                          DataCell(Text('₹${item.itemTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                ),
-
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    'Total Amount: ₹${sale.total.toStringAsFixed(2)}',
-                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                  ),
-                ),
+                const Icon(Icons.receipt, color: Color(0xFF667eea)),
+                const SizedBox(width: 8),
+                Text('Invoice: ${sale.invoice}'),
               ],
             ),
+            content: SizedBox(
+              width: double.maxFinite,
+              height: MediaQuery
+                  .of(context)
+                  .size
+                  .height * 0.6,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Colors.blue.shade50,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          _buildDetailRow('Customer', sale.customerName),
+                          _buildDetailRow('Date',
+                              DateFormat('dd MMMM yyyy').format(sale.date)),
+                          _buildDetailRow('GSTIN', sale.recipientGSTIN.isEmpty
+                              ? 'Not Provided'
+                              : sale.recipientGSTIN),
+                          _buildDetailRow(
+                              'Place of Supply', sale.placeOfSupply),
+                          _buildDetailRow('Supply Type', sale.supplyType),
+                          _buildDetailRow('Sale Type', sale.saleType),
+                          if (sale.eWayBillNo != null &&
+                              sale.eWayBillNo!.isNotEmpty)
+                            _buildDetailRow('E-Way Bill', sale.eWayBillNo!),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Items',
+                      style: TextStyle(
+                          fontWeight: FontWeight.bold, fontSize: 16),
+                    ),
+                    const SizedBox(height: 8),
+
+                    // Items List
+                    ...sale.items.map((item) {
+                      final totalTaxRate = item.igstRate > 0
+                          ? item.igstRate
+                          : (item.cgstRate + item.sgstRate);
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                item.description,
+                                style: const TextStyle(
+                                    fontWeight: FontWeight.bold),
+                              ),
+                              const SizedBox(height: 4),
+                              Text('HSN: ${item.hsnSacCode} | Qty: ${item
+                                  .quantity.toStringAsFixed(1)} ${item
+                                  .unitOfMeasurement}'),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment
+                                    .spaceBetween,
+                                children: [
+                                  Text('Rate: ₹${item.sellingPricePerUnit
+                                      .toStringAsFixed(2)}'),
+                                  Text('Tax: ${totalTaxRate.toStringAsFixed(
+                                      1)}%'),
+                                  Text(
+                                    'Total: ₹${item.itemTotal.toStringAsFixed(
+                                        2)}',
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFF667eea),
+                            const Color(0xFF764ba2)
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Total Amount',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          Text(
+                            '₹${sale.total.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  PDFUtils.generateAndDownloadPDF(sale);
+                },
+                icon: const Icon(Icons.picture_as_pdf),
+                label: const Text('Download PDF'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF667eea),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              PDFUtils.generateAndDownloadPDF(sale);
-            },
-            child: const Text('Download PDF'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -483,50 +811,62 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 100,
-            child: Text('$label:', style: const TextStyle(fontWeight: FontWeight.w500)),
+            width: 120,
+            child: Text(
+              '$label:',
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+            ),
           ),
-          Expanded(child: Text(value)),
+          Expanded(
+            child: Text(
+              value,
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
         ],
       ),
     );
   }
 
   Future<void> _exportSalesRegister() async {
-    try {
-      // Show loading indicator
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) => const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
+    setState(() => _isLoading = true);
 
+    try {
       final salesSnapshot = await _firestore
           .collection('sales')
-          .where('businessId', isEqualTo: widget.businessId)
+          .where('userId', isEqualTo: widget.businessId)
           .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(_fromDate))
           .where('date', isLessThanOrEqualTo: Timestamp.fromDate(_toDate))
           .get();
 
-      // Dismiss loading dialog
-      Navigator.of(context).pop();
-
       final sales = salesSnapshot.docs
-          .map((doc) => SaleMaster.fromFirestore(doc))
-          .where((sale) => _applyAdditionalFilters(sale))
+          .map((doc) {
+        try {
+          return SaleMaster.fromFirestore(doc);
+        } catch (e) {
+          debugPrint('Error parsing sale: $e');
+          return null;
+        }
+      })
+          .where((sale) => sale != null && _applyAdditionalFilters(sale))
+          .cast<SaleMaster>()
           .toList();
 
+      setState(() => _isLoading = false);
+
       if (sales.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('No data to export'),
-            backgroundColor: Colors.orange,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No data to export'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
         return;
       }
+
+      if (!mounted) return;
 
       showModalBottomSheet(
         context: context,
@@ -536,83 +876,128 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
         builder: (BuildContext bc) {
           return SafeArea(
             child: Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.symmetric(vertical: 20),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade300,
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
                   const Text(
                     'Export Sales Register',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 8),
+                  Text(
+                    '${sales.length} transactions found',
+                    style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+                  ),
+                  const SizedBox(height: 20),
+
+                  /// ---------- PDF ----------
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.red.shade100,
+                        color: Colors.red.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.picture_as_pdf, color: Colors.red),
+                      child: const Icon(
+                          Icons.picture_as_pdf, color: Colors.red),
                     ),
                     title: const Text('Download PDF'),
-                    subtitle: const Text('Detailed sales register in PDF format'),
+                    subtitle: const Text(
+                        'Detailed sales register in PDF format'),
                     onTap: () async {
                       Navigator.pop(bc);
-                      await PDFUtils.generateSalesRegisterPDF(sales, _fromDate, _toDate, _selectedFilter);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Sales Register PDF downloaded!'),
-                          backgroundColor: Colors.green,
-                        ),
+                      await PDFUtils.generateSalesRegisterPDF(
+                        sales,
+                        _fromDate,
+                        _toDate,
+                        _selectedFilter,
                       );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('Sales Register PDF downloaded!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
                     },
                   ),
+
+                  /// ---------- EXCEL ----------
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.green.shade100,
+                        color: Colors.green.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Icon(Icons.table_chart, color: Colors.green),
+                      child:
+                      const Icon(Icons.table_chart, color: Colors.green),
                     ),
                     title: const Text('Download Excel'),
-                    subtitle: const Text('Spreadsheet format for analysis'),
+                    subtitle:
+                    const Text('Spreadsheet format for analysis'),
                     onTap: () async {
                       Navigator.pop(bc);
-                      await PDFUtils.generateSalesRegisterExcel(sales, _fromDate, _toDate, _selectedFilter);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Sales Register Excel downloaded!'),
-                          backgroundColor: Colors.green,
-                        ),
-                      );
+                      // await PDFUtils.generateSalesRegisterExcel(
+                      //   sales,
+                      //   _fromDate,
+                      //   _toDate,
+                      //   _selectedFilter,
+                      // );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                            Text('Sales Register Excel downloaded!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
                     },
                   ),
+
+                  /// ---------- JSON ----------
                   ListTile(
                     leading: Container(
                       padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: Colors.blue.shade100,
+                        color: Colors.blue.shade50,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Icon(Icons.code, color: Colors.blue),
                     ),
-                    title: const Text('Download JSON (for GST Portal)'),
-                    subtitle: const Text('GST return filing format'),
+                    title: const Text('Download JSON'),
+                    subtitle:
+                    const Text('GST return filing format'),
                     onTap: () async {
                       Navigator.pop(bc);
-                      await PDFUtils.generateSalesRegisterJSON(sales, _fromDate, _toDate);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Sales Register JSON downloaded!'),
-                          backgroundColor: Colors.green,
-                        ),
+                      await PDFUtils.generateSalesRegisterJSON(
+                        sales,
+                        _fromDate,
+                        _toDate,
                       );
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content:
+                            Text('Sales Register JSON downloaded!'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                      }
                     },
                   ),
-                  const SizedBox(height: 16),
                 ],
               ),
             ),
@@ -620,17 +1005,16 @@ class _SalesRegisterScreenState extends State<SalesRegisterScreen> {
         },
       );
     } catch (e) {
-      // Dismiss loading dialog if it's still open
-      if (Navigator.canPop(context)) {
-        Navigator.of(context).pop();
+      setState(() => _isLoading = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error exporting: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      debugPrint('Error exporting sales register: $e');
     }
   }
 }

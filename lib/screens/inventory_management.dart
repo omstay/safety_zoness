@@ -681,96 +681,96 @@ class _ItemsTabState extends State<ItemsTab> {
             },
           ),
         ),
-        Align(
-          alignment: Alignment.bottomRight,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FloatingActionButton.extended(
-              heroTag: 'generate_items_report',
-              label: const Text('Generate My Items Report'), // Updated label
-              icon: const Icon(Icons.document_scanner),
-              backgroundColor: Colors.blue,
-              onPressed: () async {
-                try {
-                  final snapshot = await _firestore
-                      .collection('items')
-                      .where('userId', isEqualTo: widget.userId)
-                      .where('isActive', isEqualTo: true)
-                      .get();
-                  final items = snapshot.docs
-                      .map((doc) => ItemMaster.fromFirestore(doc))
-                      .toList();
-                  if (items.isEmpty) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No items to export.'), backgroundColor: Colors.orange),
-                      );
-                    }
-                    return;
-                  }
-                  // Show options to download, share, or print
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (BuildContext bc) {
-                      return SafeArea(
-                        child: Wrap(
-                          children: <Widget>[
-                            ListTile(
-                              leading: const Icon(Icons.download),
-                              title: const Text('Download PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.generateAndDownloadAllItemsPDF(items);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Items Report PDF downloaded!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.share),
-                              title: const Text('Share PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.shareAllItemsPDF(items);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Items Report PDF shared!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.print),
-                              title: const Text('Print PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.printAllItemsPDF(items);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('All Items Report PDF sent to printer!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error generating items report: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                  debugPrint('Error generating all items report: $e');
-                }
-              },
-            ),
-          ),
-        ),
+        // Align(
+        //   alignment: Alignment.bottomRight,
+        //   child: Padding(
+        //     padding: const EdgeInsets.all(16.0),
+        //     child: FloatingActionButton.extended(
+        //       heroTag: 'generate_items_report',
+        //       label: const Text('Generate My Items Report'), // Updated label
+        //       icon: const Icon(Icons.document_scanner),
+        //       backgroundColor: Colors.blue,
+        //       onPressed: () async {
+        //         try {
+        //           final snapshot = await _firestore
+        //               .collection('items')
+        //               .where('userId', isEqualTo: widget.userId)
+        //               .where('isActive', isEqualTo: true)
+        //               .get();
+        //           final items = snapshot.docs
+        //               .map((doc) => ItemMaster.fromFirestore(doc))
+        //               .toList();
+        //           if (items.isEmpty) {
+        //             if (mounted) {
+        //               ScaffoldMessenger.of(context).showSnackBar(
+        //                 const SnackBar(content: Text('No items to export.'), backgroundColor: Colors.orange),
+        //               );
+        //             }
+        //             return;
+        //           }
+        //           // Show options to download, share, or print
+        //           // showModalBottomSheet(
+        //           //   context: context,
+        //           //   builder: (BuildContext bc) {
+        //           //     return SafeArea(
+        //           //       child: Wrap(
+        //           //         children: <Widget>[
+        //           //           ListTile(
+        //           //             leading: const Icon(Icons.download),
+        //           //             title: const Text('Download PDF'),
+        //           //             onTap: () async {
+        //           //               Navigator.pop(bc);
+        //           //               await PDFUtils.generateAndDownloadAllItemsPDF(items);
+        //           //               if (mounted) {
+        //           //                 ScaffoldMessenger.of(context).showSnackBar(
+        //           //                   const SnackBar(content: Text('All Items Report PDF downloaded!'), backgroundColor: Colors.green),
+        //           //                 );
+        //           //               }
+        //           //             },
+        //           //           ),
+        //           //           ListTile(
+        //           //             leading: const Icon(Icons.share),
+        //           //             title: const Text('Share PDF'),
+        //           //             onTap: () async {
+        //           //               Navigator.pop(bc);
+        //           //               await PDFUtils.shareAllItemsPDF(items);
+        //           //               if (mounted) {
+        //           //                 ScaffoldMessenger.of(context).showSnackBar(
+        //           //                   const SnackBar(content: Text('All Items Report PDF shared!'), backgroundColor: Colors.green),
+        //           //                 );
+        //           //               }
+        //           //             },
+        //           //           ),
+        //           //           ListTile(
+        //           //             leading: const Icon(Icons.print),
+        //           //             title: const Text('Print PDF'),
+        //           //             onTap: () async {
+        //           //               Navigator.pop(bc);
+        //           //               await PDFUtils.printAllItemsPDF(items);
+        //           //               if (mounted) {
+        //           //                 ScaffoldMessenger.of(context).showSnackBar(
+        //           //                   const SnackBar(content: Text('All Items Report PDF sent to printer!'), backgroundColor: Colors.green),
+        //           //                 );
+        //           //               }
+        //           //             },
+        //           //           ),
+        //           //         ],
+        //           //       ),
+        //           //     );
+        //           //   },
+        //           // );
+        //         } catch (e) {
+        //           if (mounted) {
+        //             ScaffoldMessenger.of(context).showSnackBar(
+        //               SnackBar(content: Text('Error generating items report: $e'), backgroundColor: Colors.red),
+        //             );
+        //           }
+        //           debugPrint('Error generating all items report: $e');
+        //         }
+        //       },
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }
@@ -1401,102 +1401,102 @@ class _SalesTabState extends State<SalesTab> {
           ),
         ),
         // Report generation button - Also remove orderBy here
-        Align(
-          alignment: Alignment.bottomRight,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: FloatingActionButton.extended(
-              heroTag: 'generate_sales_report',
-              label: const Text('Generate My Sales Report'),
-              icon: const Icon(Icons.document_scanner),
-              backgroundColor: Colors.blue,
-              onPressed: () async {
-                try {
-                  final snapshot = await _firestore
-                      .collection('sales')
-                      .where('userId', isEqualTo: widget.userId)
-                  // REMOVED: .orderBy('date', descending: true) - Avoid index requirement
-                      .get();
-
-                  final sales = snapshot.docs
-                      .map((doc) => SaleMaster.fromFirestore(doc))
-                      .toList();
-
-                  // MANUAL SORTING: Sort by date in Dart
-                  sales.sort((a, b) => b.date.compareTo(a.date));
-
-                  if (sales.isEmpty) {
-                    if (mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(content: Text('No sales data to export.'), backgroundColor: Colors.orange),
-                      );
-                    }
-                    return;
-                  }
-
-                  // Rest of the method remains the same...
-                  showModalBottomSheet(
-                    context: context,
-                    builder: (BuildContext bc) {
-                      return SafeArea(
-                        child: Wrap(
-                          children: <Widget>[
-                            ListTile(
-                              leading: const Icon(Icons.download),
-                              title: const Text('Download PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.generateAndDownloadAllSalesPDF(sales);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('My Sales Report PDF downloaded!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.share),
-                              title: const Text('Share PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.shareAllSalesPDF(sales);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('My Sales Report PDF shared!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                            ListTile(
-                              leading: const Icon(Icons.print),
-                              title: const Text('Print PDF'),
-                              onTap: () async {
-                                Navigator.pop(bc);
-                                await PDFUtils.printAllSalesPDF(sales);
-                                if (mounted) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    const SnackBar(content: Text('My Sales Report PDF sent to printer!'), backgroundColor: Colors.green),
-                                  );
-                                }
-                              },
-                            ),
-                          ],
-                        ),
-                      );
-                    },
-                  );
-                } catch (e) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error generating sales report: $e'), backgroundColor: Colors.red),
-                    );
-                  }
-                  debugPrint('Error generating all sales report: $e');
-                }
-              },
-            ),
-          ),
-        ),
+        // Align(
+        //   alignment: Alignment.bottomRight,
+        //   child: Padding(
+        //     padding: const EdgeInsets.all(16.0),
+        //     child: FloatingActionButton.extended(
+        //       heroTag: 'generate_sales_report',
+        //       label: const Text('Generate My Sales Report'),
+        //       icon: const Icon(Icons.document_scanner),
+        //       backgroundColor: Colors.blue,
+        //       onPressed: () async {
+        //         try {
+        //           final snapshot = await _firestore
+        //               .collection('sales')
+        //               .where('userId', isEqualTo: widget.userId)
+        //           // REMOVED: .orderBy('date', descending: true) - Avoid index requirement
+        //               .get();
+        //
+        //           final sales = snapshot.docs
+        //               .map((doc) => SaleMaster.fromFirestore(doc))
+        //               .toList();
+        //
+        //           // MANUAL SORTING: Sort by date in Dart
+        //           sales.sort((a, b) => b.date.compareTo(a.date));
+        //
+        //           if (sales.isEmpty) {
+        //             if (mounted) {
+        //               ScaffoldMessenger.of(context).showSnackBar(
+        //                 const SnackBar(content: Text('No sales data to export.'), backgroundColor: Colors.orange),
+        //               );
+        //             }
+        //             return;
+        //           }
+        //
+        //           // Rest of the method remains the same...
+        //           showModalBottomSheet(
+        //             context: context,
+        //             builder: (BuildContext bc) {
+        //               return SafeArea(
+        //                 child: Wrap(
+        //                   children: <Widget>[
+        //                     ListTile(
+        //                       leading: const Icon(Icons.download),
+        //                       title: const Text('Download PDF'),
+        //                       onTap: () async {
+        //                         Navigator.pop(bc);
+        //                         await PDFUtils.generateAndDownloadAllSalesPDF(sales);
+        //                         if (mounted) {
+        //                           ScaffoldMessenger.of(context).showSnackBar(
+        //                             const SnackBar(content: Text('My Sales Report PDF downloaded!'), backgroundColor: Colors.green),
+        //                           );
+        //                         }
+        //                       },
+        //                     ),
+        //                     ListTile(
+        //                       leading: const Icon(Icons.share),
+        //                       title: const Text('Share PDF'),
+        //                       onTap: () async {
+        //                         Navigator.pop(bc);
+        //                         await PDFUtils.shareAllSalesPDF(sales);
+        //                         if (mounted) {
+        //                           ScaffoldMessenger.of(context).showSnackBar(
+        //                             const SnackBar(content: Text('My Sales Report PDF shared!'), backgroundColor: Colors.green),
+        //                           );
+        //                         }
+        //                       },
+        //                     ),
+        //                     ListTile(
+        //                       leading: const Icon(Icons.print),
+        //                       title: const Text('Print PDF'),
+        //                       onTap: () async {
+        //                         Navigator.pop(bc);
+        //                         await PDFUtils.printAllSalesPDF(sales);
+        //                         if (mounted) {
+        //                           ScaffoldMessenger.of(context).showSnackBar(
+        //                             const SnackBar(content: Text('My Sales Report PDF sent to printer!'), backgroundColor: Colors.green),
+        //                           );
+        //                         }
+        //                       },
+        //                     ),
+        //                   ],
+        //                 ),
+        //               );
+        //             },
+        //           );
+        //         } catch (e) {
+        //           if (mounted) {
+        //             ScaffoldMessenger.of(context).showSnackBar(
+        //               SnackBar(content: Text('Error generating sales report: $e'), backgroundColor: Colors.red),
+        //             );
+        //           }
+        //           debugPrint('Error generating all sales report: $e');
+        //         }
+        //       },
+        //     ),
+        //   ),
+        // ),
       ],
     );
   }
@@ -2790,56 +2790,56 @@ class _GenerateStockReportButtonState extends State<GenerateStockReportButton> {
                 return;
               }
               // Show options to download, share, or print
-              showModalBottomSheet(
-                context: context,
-                builder: (BuildContext bc) {
-                  return SafeArea(
-                    child: Wrap(
-                      children: <Widget>[
-                        ListTile(
-                          leading: const Icon(Icons.download),
-                          title: const Text('Download PDF'),
-                          onTap: () async {
-                            Navigator.pop(bc);
-                            await PDFUtils.generateAndDownloadAllStockPDF(stocks, items);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('All Stock Report PDF downloaded!'), backgroundColor: Colors.green),
-                              );
-                            }
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.share),
-                          title: const Text('Share PDF'),
-                          onTap: () async {
-                            Navigator.pop(bc);
-                            await PDFUtils.shareAllStockPDF(stocks, items);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('All Stock Report PDF shared!'), backgroundColor: Colors.green),
-                              );
-                            }
-                          },
-                        ),
-                        ListTile(
-                          leading: const Icon(Icons.print),
-                          title: const Text('Print PDF'),
-                          onTap: () async {
-                            Navigator.pop(bc);
-                            await PDFUtils.printAllStockPDF(stocks, items);
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(content: Text('All Stock Report PDF sent to printer!'), backgroundColor: Colors.green),
-                              );
-                            }
-                          },
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              );
+              // showModalBottomSheet(
+              //   context: context,
+              //   builder: (BuildContext bc) {
+              //     return SafeArea(
+              //       child: Wrap(
+              //         children: <Widget>[
+              //           ListTile(
+              //             leading: const Icon(Icons.download),
+              //             title: const Text('Download PDF'),
+              //             onTap: () async {
+              //               Navigator.pop(bc);
+              //               await PDFUtils.generateAndDownloadAllStockPDF(stocks, items);
+              //               if (mounted) {
+              //                 ScaffoldMessenger.of(context).showSnackBar(
+              //                   const SnackBar(content: Text('All Stock Report PDF downloaded!'), backgroundColor: Colors.green),
+              //                 );
+              //               }
+              //             },
+              //           ),
+              //           ListTile(
+              //             leading: const Icon(Icons.share),
+              //             title: const Text('Share PDF'),
+              //             onTap: () async {
+              //               Navigator.pop(bc);
+              //               await PDFUtils.shareAllStockPDF(stocks, items);
+              //               if (mounted) {
+              //                 ScaffoldMessenger.of(context).showSnackBar(
+              //                   const SnackBar(content: Text('All Stock Report PDF shared!'), backgroundColor: Colors.green),
+              //                 );
+              //               }
+              //             },
+              //           ),
+              //           ListTile(
+              //             leading: const Icon(Icons.print),
+              //             title: const Text('Print PDF'),
+              //             onTap: () async {
+              //               Navigator.pop(bc);
+              //               await PDFUtils.printAllStockPDF(stocks, items);
+              //               if (mounted) {
+              //                 ScaffoldMessenger.of(context).showSnackBar(
+              //                   const SnackBar(content: Text('All Stock Report PDF sent to printer!'), backgroundColor: Colors.green),
+              //                 );
+              //               }
+              //             },
+              //           ),
+              //         ],
+              //       ),
+              //     );
+              //   },
+              // );
             } catch (e) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
@@ -3146,50 +3146,50 @@ class _GSTR1SectionScreenState extends State<GSTR1SectionScreen> {
         return;
       }
 
-      showModalBottomSheet(
-        context: context,
-        builder: (BuildContext bc) {
-          return SafeArea(
-            child: Wrap(
-              children: <Widget>[
-                ListTile(
-                  leading: const Icon(Icons.picture_as_pdf),
-                  title: const Text('Download PDF'),
-                  onTap: () async {
-                    Navigator.pop(bc);
-                    await PDFUtils.generateGSTR1SectionPDF(sales.cast<Map<String, dynamic>>(), widget.sectionTitle, widget.fromDate, widget.toDate);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${widget.sectionTitle} PDF downloaded!')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.table_chart),
-                  title: const Text('Download Excel'),
-                  onTap: () async {
-                    Navigator.pop(bc);
-                    await PDFUtils.generateGSTR1SectionExcel(sales.cast<Map<String, dynamic>>(), widget.sectionTitle, widget.fromDate, widget.toDate);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${widget.sectionTitle} Excel downloaded!')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.code),
-                  title: const Text('Download JSON'),
-                  onTap: () async {
-                    Navigator.pop(bc);
-                    await PDFUtils.generateGSTR1SectionJSON(sales, widget.sectionFilter, widget.fromDate, widget.toDate);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('${widget.sectionTitle} JSON downloaded!')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
+      // showModalBottomSheet(
+      //   context: context,
+      //   builder: (BuildContext bc) {
+      //     return SafeArea(
+      //       child: Wrap(
+      //         children: <Widget>[
+      //           ListTile(
+      //             leading: const Icon(Icons.picture_as_pdf),
+      //             title: const Text('Download PDF'),
+      //             onTap: () async {
+      //               Navigator.pop(bc);
+      //               await PDFUtils.generateGSTR1SectionPDF(sales.cast<Map<String, dynamic>>(), widget.sectionTitle, widget.fromDate, widget.toDate);
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 SnackBar(content: Text('${widget.sectionTitle} PDF downloaded!')),
+      //               );
+      //             },
+      //           ),
+      //           ListTile(
+      //             leading: const Icon(Icons.table_chart),
+      //             title: const Text('Download Excel'),
+      //             onTap: () async {
+      //               Navigator.pop(bc);
+      //               await PDFUtils.generateGSTR1SectionExcel(sales.cast<Map<String, dynamic>>(), widget.sectionTitle, widget.fromDate, widget.toDate);
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 SnackBar(content: Text('${widget.sectionTitle} Excel downloaded!')),
+      //               );
+      //             },
+      //           ),
+      //           ListTile(
+      //             leading: const Icon(Icons.code),
+      //             title: const Text('Download JSON'),
+      //             onTap: () async {
+      //               Navigator.pop(bc);
+      //               await PDFUtils.generateGSTR1SectionJSON(sales, widget.sectionFilter, widget.fromDate, widget.toDate);
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 SnackBar(content: Text('${widget.sectionTitle} JSON downloaded!')),
+      //               );
+      //             },
+      //           ),
+      //         ],
+      //       ),
+      //     );
+      //   },
+      // );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -3410,39 +3410,39 @@ class _HSNSummaryScreenState extends State<HSNSummaryScreen> {
         return;
       }
 
-      showModalBottomSheet(
-        context: context,
-        builder: (BuildContext bc) {
-          return SafeArea(
-            child: Wrap(
-              children: <Widget>[
-                ListTile(
-                  leading: const Icon(Icons.picture_as_pdf),
-                  title: const Text('Download PDF'),
-                  onTap: () async {
-                    Navigator.pop(bc);
-                    await PDFUtils.generateHSNSummaryPDF(hsnData, widget.fromDate, widget.toDate);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('HSN Summary PDF downloaded!')),
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: const Icon(Icons.table_chart),
-                  title: const Text('Download Excel'),
-                  onTap: () async {
-                    Navigator.pop(bc);
-                    await PDFUtils.generateHSNSummaryExcel(hsnData, widget.fromDate, widget.toDate);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('HSN Summary Excel downloaded!')),
-                    );
-                  },
-                ),
-              ],
-            ),
-          );
-        },
-      );
+      // showModalBottomSheet(
+      //   context: context,
+      //   builder: (BuildContext bc) {
+      //     return SafeArea(
+      //       child: Wrap(
+      //         children: <Widget>[
+      //           ListTile(
+      //             leading: const Icon(Icons.picture_as_pdf),
+      //             title: const Text('Download PDF'),
+      //             onTap: () async {
+      //               Navigator.pop(bc);
+      //               await PDFUtils.generateHSNSummaryPDF(hsnData, widget.fromDate, widget.toDate);
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 const SnackBar(content: Text('HSN Summary PDF downloaded!')),
+      //               );
+      //             },
+      //           ),
+      //           ListTile(
+      //             leading: const Icon(Icons.table_chart),
+      //             title: const Text('Download Excel'),
+      //             onTap: () async {
+      //               Navigator.pop(bc);
+      //               await PDFUtils.generateHSNSummaryExcel(hsnData, widget.fromDate, widget.toDate);
+      //               ScaffoldMessenger.of(context).showSnackBar(
+      //                 const SnackBar(content: Text('HSN Summary Excel downloaded!')),
+      //               );
+      //             },
+      //           ),
+      //         ],
+      //       ),
+      //     );
+      //   },
+      // );
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
@@ -3511,7 +3511,7 @@ class _DocumentsSummaryScreenState extends State<DocumentsSummaryScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton.icon(
-                    onPressed: () => _exportDocumentsSummary(docSummary),
+                    onPressed: () => (docSummary),
                     icon: const Icon(Icons.file_download),
                     label: const Text('Export Summary'),
                     style: ElevatedButton.styleFrom(
@@ -3628,18 +3628,18 @@ class _DocumentsSummaryScreenState extends State<DocumentsSummaryScreen> {
     };
   }
 
-  Future<void> _exportDocumentsSummary(Map<String, dynamic> summary) async {
-    try {
-      await PDFUtils.generateDocumentsSummaryPDF(summary as List<Map<String, dynamic>>, widget.fromDate, widget.toDate);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Documents Summary PDF downloaded!')),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
+  // Future<void> _exportDocumentsSummary(Map<String, dynamic> summary) async {
+  //   try {
+  //     await PDFUtils.generateDocumentsSummaryPDF(summary as List<Map<String, dynamic>>, widget.fromDate, widget.toDate);
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       const SnackBar(content: Text('Documents Summary PDF downloaded!')),
+  //     );
+  //   } catch (e) {
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+  //     );
+  //   }
+  // }
 }
 
 // Nil Rated Supplies Screen

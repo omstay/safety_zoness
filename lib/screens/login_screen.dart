@@ -9,6 +9,8 @@ class UserModel {
   final String username;
   final String phone;
   final String businessName;
+  final String gstin;
+
   final String bankName;
   final String accountNumber;
   final String ifscCode;
@@ -22,6 +24,7 @@ class UserModel {
     required this.username,
     required this.phone,
     required this.businessName,
+    required this.gstin,
     required this.bankName,
     required this.accountNumber,
     required this.ifscCode,
@@ -37,11 +40,14 @@ class UserModel {
       username: map['username'] ?? '',
       phone: map['phone'] ?? '',
       businessName: map['businessName'] ?? '',
+      gstin: map['gstin'] ?? "",
+
       bankName: map['bankName'] ?? '',
       accountNumber: map['accountNumber'] ?? '',
       ifscCode: map['ifscCode'] ?? '',
       accountHolderName: map['accountHolderName'] ?? '',
       createdAt: (map['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now(),
+
       isActive: map['isActive'] ?? true,
     );
   }
@@ -53,11 +59,14 @@ class UserModel {
       'username': username,
       'phone': phone,
       'businessName': businessName,
+      'gstin': gstin,
+
       'bankName': bankName,
       'accountNumber': accountNumber,
       'ifscCode': ifscCode,
       'accountHolderName': accountHolderName,
       'createdAt': Timestamp.fromDate(createdAt),
+
       'isActive': isActive,
     };
   }
@@ -89,6 +98,8 @@ class AuthService {
     required String username,
     required String phone,
     required String businessName,
+    required String gstin,
+
     required String bankName,
     required String accountNumber,
     required String ifscCode,
@@ -106,8 +117,11 @@ class AuthService {
           uid: user.uid,
           email: email,
           username: username,
+
           phone: phone,
           businessName: businessName,
+          gstin: gstin,
+
           bankName: bankName,
           accountNumber: accountNumber,
           ifscCode: ifscCode,
@@ -159,6 +173,7 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   final _usernameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _businessNameController = TextEditingController();
+  final _gstinController = TextEditingController();
 
   // Bank details controllers
   final _bankNameController = TextEditingController();
@@ -209,6 +224,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
     _accountNumberController.dispose();
     _ifscCodeController.dispose();
     _accountHolderNameController.dispose();
+    _gstinController.dispose();
+
     super.dispose();
   }
 
@@ -254,6 +271,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         username: _usernameController.text.trim(),
         phone: _phoneController.text.trim(),
         businessName: _businessNameController.text.trim(),
+        gstin: _gstinController.text.trim(),
+
         bankName: _bankNameController.text.trim(),
         accountNumber: _accountNumberController.text.trim(),
         ifscCode: _ifscCodeController.text.trim().toUpperCase(),
@@ -322,6 +341,8 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // SOLUTION 1: Add resizeToAvoidBottomInset
+      resizeToAvoidBottomInset: true,
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -339,92 +360,104 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         child: SafeArea(
           child: Column(
             children: [
-              // Animated Header Section
-              FadeTransition(
-                opacity: _fadeAnimation,
-                child: SlideTransition(
-                  position: _slideAnimation,
-                  child: Container(
-                    padding: const EdgeInsets.all(32),
-                    child: Column(
-                      children: [
-                        // Animated Logo with glow effect
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(30),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFF60A5FA).withOpacity(0.3),
-                                blurRadius: 30,
-                                offset: const Offset(0, 15),
-                                spreadRadius: 5,
-                              ),
-                              BoxShadow(
-                                color: Colors.white.withOpacity(0.1),
-                                blurRadius: 20,
-                                offset: const Offset(0, 10),
-                              ),
-                            ],
-                          ),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(30),
-                            child: Image.asset(
-                              'lib/assets/images/logo.jpeg',
-                              fit: BoxFit.cover,
-                              errorBuilder: (context, error, stackTrace) {
-                                return Container(
-                                  decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
-                                      colors: [Color(0xFF3B82F6), Color(0xFF1E40AF)],
+              // SOLUTION 2: Make header adaptive to keyboard
+              AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                height: MediaQuery.of(context).viewInsets.bottom > 0
+                    ? 120  // Reduced height when keyboard is visible
+                    : 280,  // Full height when keyboard is hidden
+                child: FadeTransition(
+                  opacity: _fadeAnimation,
+                  child: SlideTransition(
+                    position: _slideAnimation,
+                    child: Container(
+                      padding: EdgeInsets.all(MediaQuery.of(context).viewInsets.bottom > 0 ? 16 : 32),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          // Animated Logo with glow effect
+                          AnimatedContainer(
+                            duration: const Duration(milliseconds: 300),
+                            width: MediaQuery.of(context).viewInsets.bottom > 0 ? 60 : 120,
+                            height: MediaQuery.of(context).viewInsets.bottom > 0 ? 60 : 120,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(MediaQuery.of(context).viewInsets.bottom > 0 ? 15 : 30),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF60A5FA).withOpacity(0.3),
+                                  blurRadius: 30,
+                                  offset: const Offset(0, 15),
+                                  spreadRadius: 5,
+                                ),
+                                BoxShadow(
+                                  color: Colors.white.withOpacity(0.1),
+                                  blurRadius: 20,
+                                  offset: const Offset(0, 10),
+                                ),
+                              ],
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(MediaQuery.of(context).viewInsets.bottom > 0 ? 15 : 30),
+                              child: Image.asset(
+                                'lib/assets/images/logo.jpeg',
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    decoration: BoxDecoration(
+                                      gradient: const LinearGradient(
+                                        colors: [Color(0xFF3B82F6), Color(0xFF1E40AF)],
+                                      ),
+                                      borderRadius: BorderRadius.circular(MediaQuery.of(context).viewInsets.bottom > 0 ? 15 : 30),
                                     ),
-                                    borderRadius: BorderRadius.circular(30),
-                                  ),
-                                  child: const Icon(
-                                    Icons.business_center,
-                                    size: 60,
-                                    color: Colors.white,
-                                  ),
-                                );
-                              },
+                                    child: Icon(
+                                      Icons.business_center,
+                                      size: MediaQuery.of(context).viewInsets.bottom > 0 ? 30 : 60,
+                                      color: Colors.white,
+                                    ),
+                                  );
+                                },
+                              ),
                             ),
                           ),
-                        ),
-                        const SizedBox(height: 24),
-                        // App Title with shimmer effect
-                        ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [Colors.white, Color(0xFF60A5FA)],
-                          ).createShader(bounds),
-                          child: const Text(
-                            'TaxEase',
-                            style: TextStyle(
-                              fontSize: 42,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
+
+                          // Only show title when keyboard is hidden
+                          if (MediaQuery.of(context).viewInsets.bottom == 0) ...[
+                            const SizedBox(height: 24),
+                            // App Title with shimmer effect
+                            ShaderMask(
+                              shaderCallback: (bounds) => const LinearGradient(
+                                colors: [Colors.white, Color(0xFF60A5FA)],
+                              ).createShader(bounds),
+                              child: const Text(
+                                'TaxEase',
+                                style: TextStyle(
+                                  fontSize: 42,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(20),
-                            border: Border.all(color: Colors.white.withOpacity(0.2)),
-                          ),
-                          child: const Text(
-                            '✨ Smart Business Solutions',
-                            style: TextStyle(
-                              fontSize: 16,
-                              color: Colors.white,
-                              fontWeight: FontWeight.w500,
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: Colors.white.withOpacity(0.2)),
+                              ),
+                              child: const Text(
+                                '✨ Smart Business Solutions',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      ],
+                          ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
@@ -532,7 +565,13 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   Widget _buildLoginTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      // SOLUTION 3: Add keyboard padding
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: Form(
         key: _loginFormKey,
         child: Column(
@@ -658,7 +697,13 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
 
   Widget _buildRegisterTab() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.all(24),
+      // SOLUTION 4: Add proper keyboard padding for registration form
+      padding: EdgeInsets.only(
+        left: 24,
+        right: 24,
+        top: 24,
+        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+      ),
       child: Form(
         key: _registerFormKey,
         child: Column(
@@ -812,6 +857,21 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
                 }
                 if (value.trim().length < 9 || value.trim().length > 18) {
                   return 'Please enter a valid account number';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            _buildTextField(
+              controller: _gstinController,
+              label: 'GSTIN Number',
+              icon: Icons.numbers,
+              validator: (value) {
+                if (value == null || value.trim().isEmpty) {
+                  return 'Please enter GSTIN';
+                }
+                if (!RegExp(r'^[0-9A-Z]{15}$').hasMatch(value.trim().toUpperCase())) {
+                  return 'Enter valid 15-digit GSTIN';
                 }
                 return null;
               },
@@ -989,6 +1049,9 @@ class _AuthScreenState extends State<AuthScreen> with TickerProviderStateMixin {
         obscureText: obscureText,
         validator: validator,
         style: const TextStyle(fontSize: 16),
+        // SOLUTION 5: Add text input action for better keyboard navigation
+        textInputAction: TextInputAction.next,
+        onEditingComplete: () => FocusScope.of(context).nextFocus(),
         decoration: InputDecoration(
           labelText: label,
           prefixIcon: Container(
